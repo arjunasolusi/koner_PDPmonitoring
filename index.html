@@ -1,22 +1,17 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Live Dewpoint</title>
+  <title>Koner Dewpoint (Public)</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       text-align: center;
       margin-top: 100px;
     }
-    h1 {
-      font-size: 2rem;
-    }
     #value {
-      font-size: 4rem;
+      font-size: 3rem;
       color: #007bff;
-      margin-top: 20px;
     }
   </style>
 </head>
@@ -25,23 +20,22 @@
   <div id="value">Loading...</div>
 
   <script>
-    const aioKey = "aio_KzwN588zpGCIhPVK4f37SMJpw3KC";
+    const url = "https://io.adafruit.com/koner1010_11/feeds/sensor1_current/data/chart?limit=1";
 
-    async function fetchFeed() {
+    async function fetchPublic() {
       try {
-        const res = await fetch("https://io.adafruit.com/api/v2/koner1010_11/feeds/sensor1_current/data?limit=1", {
-          headers: { 'X-AIO-Key': aioKey }
-        });
+        const res = await fetch(url);
         const data = await res.json();
-        document.getElementById("value").textContent = data[0].value + " °C";
+        const value = data.values[0];
+        document.getElementById("value").textContent = value + " °C";
       } catch (err) {
-        document.getElementById("value").textContent = "Error loading data";
+        document.getElementById("value").textContent = "Failed to load";
         console.error(err);
       }
     }
 
-    fetchFeed();
-    setInterval(fetchFeed, 4000); // Refresh every 4 seconds
+    fetchPublic();
+    setInterval(fetchPublic, 4000);
   </script>
 </body>
 </html>
