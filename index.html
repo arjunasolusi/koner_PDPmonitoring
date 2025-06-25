@@ -9,22 +9,18 @@
       text-align: center;
       margin-top: 100px;
     }
-    h1 {
-      font-size: 2rem;
-    }
     #value {
       font-size: 4rem;
       color: #007bff;
-      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>Live Dewpoint (sensor1_current)</h1>
+  <h1>Live Dewpoint (sensor1-current)</h1>
   <div id="value">Loading...</div>
 
   <script>
-    const url = "https://io.adafruit.com/koner1010_11/feeds/sensor1_current/data/chart?limit=1";
+    const url = "https://io.adafruit.com/koner1010_11/feeds/sensor1-current/data/chart?limit=1";
 
     async function fetchPublic() {
       try {
@@ -39,7 +35,7 @@
     }
 
     fetchPublic();
-    setInterval(fetchPublic, 4000); // refresh every 4 seconds
+    setInterval(fetchPublic, 4000);
   </script>
 </body>
 </html>
