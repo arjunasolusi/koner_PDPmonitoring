@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Koner Dewpoint Monitoring</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin-top: 100px;
+      padding: 20px;
     }
     h1 {
       font-size: 2rem;
@@ -15,31 +16,98 @@
     #value {
       font-size: 4rem;
       color: #007bff;
-      margin-top: 20px;
+      margin: 10px 0;
+    }
+    #updated {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    #chart-container {
+      width: 90%;
+      max-width: 800px;
+      margin: 40px auto;
     }
   </style>
 </head>
 <body>
   <h1>Live Dewpoint (sensor1-current)</h1>
   <div id="value">Loading...</div>
+  <div id="updated"></div>
+  <div id="chart-container">
+    <canvas id="trendChart"></canvas>
+  </div>
 
   <script>
-    const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev"; // Ganti dengan URL Worker kamu
+    const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev";
+
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Dewpoint (°C)',
+          data: [],
+          fill: false,
+          borderColor: 'rgba(0, 123, 255, 1)',
+          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          tension: 0.1
+        }]
+      },
+      options: {
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              tooltipFormat: 'HH:mm:ss',
+              displayFormats: {
+                second: 'HH:mm:ss',
+                minute: 'HH:mm'
+              }
+            },
+            title: {
+              display: true,
+              text: 'Time'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Dewpoint (°C)'
+            }
+          }
+        }
+      }
+    });
 
     async function fetchPublic() {
       try {
         const res = await fetch(url);
         const data = await res.json();
-        const value = data[0].value;
+        const value = parseFloat(data[0].value);
+        const time = new Date(data[0].created_at);
+
         document.getElementById("value").textContent = value + " °C";
+        document.getElementById("updated").textContent = "Last updated: " + time.toLocaleString();
+
+        chart.data.labels.push(time);
+        chart.data.datasets[0].data.push(value);
+
+        if (chart.data.labels.length > 60) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
+        }
+
+        chart.update();
       } catch (err) {
         document.getElementById("value").textContent = "Failed to load";
+        document.getElementById("updated").textContent = "";
         console.error(err);
       }
     }
 
     fetchPublic();
-    setInterval(fetchPublic, 4000); // Refresh every 4 seconds
+    setInterval(fetchPublic, 4000);
   </script>
 </body>
 </html>
