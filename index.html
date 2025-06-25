@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,13 +25,11 @@
   <div id="value">Loading...</div>
 
   <script>
-    const username = "koner1010_11";
-    const feed = "sensor1_current";
     const aioKey = "aio_KzwN588zpGCIhPVK4f37SMJpw3KC";
 
     async function fetchFeed() {
       try {
-        const res = await fetch(`https://io.adafruit.com/api/v2/${username}/feeds/${feed}/data?limit=1`, {
+        const res = await fetch("https://io.adafruit.com/api/v2/koner1010_11/feeds/sensor1_current/data?limit=1", {
           headers: { 'X-AIO-Key': aioKey }
         });
         const data = await res.json();
