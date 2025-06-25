@@ -2,22 +2,53 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Koner Dewpoint Dashboard</title>
+  <title>Koner Dewpoint Monitoring</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <style>
-    body { font-family: Arial; text-align: center; padding: 20px; }
-    h1 { font-size: 2rem; }
-    #value { font-size: 3rem; color: #007bff; margin: 10px 0; }
-    #updated { font-size: 0.9rem; color: #555; }
-    #chart-container { width: 90%; max-width: 800px; margin: 40px auto; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #logo {
+      max-width: 180px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 5px;
+    }
+    #range {
+      font-size: 0.9rem;
+      color: #555;
+      margin-bottom: 20px;
+    }
+    #value {
+      font-size: 3rem;
+      color: #007bff;
+      margin-top: 10px;
+    }
+    #updated {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    #chart-container {
+      width: 90%;
+      max-width: 800px;
+      margin: 40px auto;
+    }
   </style>
 </head>
 <body>
-  <h1>Live Dewpoint (sensor1-current)</h1>
+  <img id="logo" src="https://arjunasolusi.github.io/koner_PDPmonitoring/Logo%20Koner%20hitam.png" alt="Koner Logo">
+  <h1>iot Dewpoint Monitoring</h1>
+  <div id="range">Range -50 ... +20 Ctd</div>
   <div id="value">Loading...</div>
   <div id="updated"></div>
-  <div id="chart-container"><canvas id="trendChart"></canvas></div>
+  <div id="chart-container">
+    <canvas id="trendChart"></canvas>
+  </div>
 
   <script>
     const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev";
@@ -25,19 +56,39 @@
     const ctx = document.getElementById('trendChart').getContext('2d');
     const chart = new Chart(ctx, {
       type: 'line',
-      data: { labels: [], datasets: [{
-        label: 'Dewpoint (°C)', data: [], fill: false,
-        borderColor: 'rgba(0,123,255,1)',
-        backgroundColor: 'rgba(0,123,255,0.2)', tension: 0.1
-      }]},
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Dewpoint (°C)',
+          data: [],
+          fill: false,
+          borderColor: 'rgba(0, 123, 255, 1)',
+          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          tension: 0.1
+        }]
+      },
       options: {
         scales: {
           x: {
-            type: 'time',  // butuh adapter date-fns
-            time: { tooltipFormat:'HH:mm:ss', displayFormats: { second:'HH:mm:ss', minute:'HH:mm' }},
-            title: { display:true, text:'Time' }
+            type: 'time',
+            time: {
+              tooltipFormat: 'HH:mm:ss',
+              displayFormats: {
+                second: 'HH:mm:ss',
+                minute: 'HH:mm'
+              }
+            },
+            title: {
+              display: true,
+              text: 'Time'
+            }
           },
-          y: { title: { display:true, text:'Dewpoint (°C)' } }
+          y: {
+            title: {
+              display: true,
+              text: 'Dewpoint (°C)'
+            }
+          }
         }
       }
     });
@@ -62,6 +113,7 @@
         chart.update();
       } catch (e) {
         document.getElementById('value').textContent = 'Failed to load';
+        document.getElementById('updated').textContent = '';
         console.error(e);
       }
     }
