@@ -2,16 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Koner Dewpoint (Public Feed)</title>
+  <title>Koner Dewpoint Monitoring</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
       margin-top: 100px;
     }
+    h1 {
+      font-size: 2rem;
+    }
     #value {
       font-size: 4rem;
       color: #007bff;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -20,13 +24,13 @@
   <div id="value">Loading...</div>
 
   <script>
-    const url = "https://io.adafruit.com/koner1010_11/feeds/sensor1-current/data/chart?limit=1";
+    const url = "https://super-hill-e7aa.arjunasolusisejahtera.workers.dev"; // Ganti dengan URL Worker kamu
 
     async function fetchPublic() {
       try {
         const res = await fetch(url);
         const data = await res.json();
-        const value = data.values[0];
+        const value = data[0].value;
         document.getElementById("value").textContent = value + " °C";
       } catch (err) {
         document.getElementById("value").textContent = "Failed to load";
@@ -35,7 +39,7 @@
     }
 
     fetchPublic();
-    setInterval(fetchPublic, 4000);
+    setInterval(fetchPublic, 4000); // Refresh every 4 seconds
   </script>
 </body>
 </html>
