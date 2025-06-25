@@ -2,156 +2,47 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Koner Dewpoint Monitoring</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://unpkg.com/@bernii/gauge.js@1.3.7/dist/gauge.min.js"></script>
+  <title>Live Dewpoint</title>
   <style>
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: Arial, sans-serif;
       text-align: center;
-      background: #ffffff;
-      padding: 20px;
+      margin-top: 100px;
     }
-    #logo {
-      max-width: 200px;
-      margin-bottom: 10px;
+    h1 {
+      font-size: 2rem;
     }
-    #gauge-container {
-      width: 300px;
-      margin: auto;
-    }
-    #chart-container {
-      width: 90%;
-      max-width: 800px;
-      margin: auto;
-      margin-top: 40px;
-    }
-    #gauge-value {
-      font-size: 24px;
-      font-weight: bold;
-      margin-top: 10px;
-    }
-    #gauge-label {
-      font-size: 18px;
-      color: #777;
+    #value {
+      font-size: 4rem;
+      color: #007bff;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <img id="logo" src="Logo Koner hitam.png" alt="Koner Logo">
-  <h1>Koner Dewpoint Monitoring</h1>
-  <div id="gauge-container">
-    <canvas id="gauge"></canvas>
-    <div id="gauge-value">Loading...</div>
-    <div id="gauge-label">Ctd</div>
-  </div>
-  <div id="chart-container">
-    <canvas id="trendChart"></canvas>
-  </div>
+  <h1>Live Dewpoint (sensor1_current)</h1>
+  <div id="value">Loading...</div>
 
   <script>
-    const username = "arjunasolusi";
+    const username = "koner1010_11";
     const feed = "sensor1_current";
-    const aioKey = "aio_loUX14QGen6ifa5Wv6WJUbNtBi5Y";
-    const refreshInterval = 4000;
+    const aioKey = "aio_KzwN588zpGCIhPVK4f37SMJpw3KC";
 
-    const opts = {
-      angle: 0.15,
-      lineWidth: 0.44,
-      radiusScale: 1,
-      pointer: {
-        length: 0.6,
-        strokeWidth: 0.035,
-        color: '#000000'
-      },
-      limitMax: false,
-      limitMin: false,
-      colorStart: '#007bff',
-      colorStop: '#007bff',
-      strokeColor: '#E0E0E0',
-      generateGradient: false,
-      highDpiSupport: true,
-      staticZones: [
-        {strokeStyle: "#F03E3E", min: -50, max: 0},
-        {strokeStyle: "#30B32D", min: 0, max: 20},
-      ],
-      staticLabels: {
-        font: "10px sans-serif",
-        labels: [-50, 0, 20],
-        color: "#000",
-        fractionDigits: 0
-      }
-    };
-
-    const target = document.getElementById('gauge');
-    const gauge = new Gauge(target).setOptions(opts);
-    gauge.maxValue = 20;
-    gauge.setMinValue(-50);
-    gauge.animationSpeed = 32;
-
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'sensor1_current',
-          data: [],
-          fill: false,
-          borderColor: 'rgba(0, 123, 255, 1)',
-          backgroundColor: 'rgba(0, 123, 255, 0.2)',
-          tension: 0.1
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
-            labels: {
-              boxWidth: 12,
-              color: '#000'
-            }
-          }
-        },
-        scales: {
-          x: { 
-            display: true, 
-            title: { display: true, text: 'Time' },
-            ticks: { autoSkip: true, maxTicksLimit: 10, maxRotation: 45, minRotation: 0 }
-          },
-          y: { 
-            display: true, 
-            title: { display: true, text: 'Value' } 
-          }
-        }
-      }
-    });
-
-    async function fetchData() {
+    async function fetchFeed() {
       try {
-        const res = await fetch(`https://io.adafruit.com/api/v2/${username}/feeds/${feed}/data?limit=10`, {
+        const res = await fetch(`https://io.adafruit.com/api/v2/${username}/feeds/${feed}/data?limit=1`, {
           headers: { 'X-AIO-Key': aioKey }
         });
         const data = await res.json();
-        const latest = parseFloat(data[0].value);
-
-        gauge.set(latest);
-        document.getElementById('gauge-value').innerText = `${latest} °C`;
-
-        const labels = data.map(d => new Date(d.created_at).toLocaleTimeString()).reverse();
-        const values = data.map(d => parseFloat(d.value)).reverse();
-
-        chart.data.labels = labels;
-        chart.data.datasets[0].data = values;
-        chart.update();
+        document.getElementById("value").textContent = data[0].value + " °C";
       } catch (err) {
-        console.error("Fetch error:", err);
+        document.getElementById("value").textContent = "Error loading data";
+        console.error(err);
       }
     }
 
-    fetchData();
-    setInterval(fetchData, refreshInterval);
+    fetchFeed();
+    setInterval(fetchFeed, 4000); // Refresh every 4 seconds
   </script>
 </body>
 </html>
