@@ -1,60 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Koner Dewpoint Monitoring</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <style>
-    body {
+    html, body {
+      margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
       background: #f9f9f9;
+      text-align: center;
+    }
+    #container {
+      padding: 2vw;
+      max-width: 90vw;
+      margin: auto;
     }
     #logo {
-      max-width: 180px;
-      margin-bottom: 10px;
+      max-width: 18vw;
+      margin-bottom: 1vw;
     }
     h1 {
-      font-size: 1.8rem;
-      margin-bottom: 5px;
+      font-size: 3vw;
+      margin: 0.3vw 0;
     }
     #range {
-      font-size: 0.9rem;
+      font-size: 1.2vw;
       color: #555;
-      margin-bottom: 20px;
+      margin-bottom: 1.5vw;
     }
     #value {
-      font-size: 3rem;
+      font-size: 5vw;
       color: #007bff;
-      margin-top: 10px;
+      margin: 0.5vw 0;
     }
     #updated {
-      font-size: 0.9rem;
+      font-size: 1.2vw;
       color: #555;
+      margin-bottom: 2vw;
     }
-    #chart-container {
-      width: 90%;
-      max-width: 800px;
-      margin: 40px auto;
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+    #buttons {
+      margin-top: 2vw;
+    }
+    button {
+      padding: 1vw 2vw;
+      font-size: 1vw;
+      margin: 0 1vw;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <img id="logo" src="https://arjunasolusi.github.io/koner_PDPmonitoring/Logo%20Koner%20hitam.png" alt="Koner Logo">
-  <h1>iot Dewpoint Monitoring</h1>
-  <div id="range">Range -50 ... +20 Ctd</div>
-  <div id="value">Loading...</div>
-  <div id="updated"></div>
-  <div id="chart-container">
+  <div id="container">
+    <img id="logo" src="https://arjunasolusi.github.io/koner_PDPmonitoring/Logo%20Koner%20hitam.png" alt="Koner Logo">
+    <h1>iot Dewpoint Monitoring</h1>
+    <div id="range">Range -50 ... +20 Ctd</div>
+    <div id="value">Loading...</div>
+    <div id="updated"></div>
+
     <canvas id="trendChart"></canvas>
+
+    <div id="buttons">
+      <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
+      <button onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
   </div>
 
   <script>
     const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev";
+    const valueEl = document.getElementById('value');
+    const updatedEl = document.getElementById('updated');
 
     const ctx = document.getElementById('trendChart').getContext('2d');
+    let counter = 0;
+    const csvData = [["Sample", "Value", "Timestamp"]];
+
     const chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -62,26 +87,19 @@
         datasets: [{
           label: 'Dewpoint (°Ctd)',
           data: [],
-          fill: false,
           borderColor: 'rgba(0, 123, 255, 1)',
-          backgroundColor: 'rgba(0, 123, 255, 0.2)',
+          fill: false,
           tension: 0.1
         }]
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
           x: {
-            type: 'time',
-            time: {
-              tooltipFormat: 'HH:mm:ss',
-              displayFormats: {
-                second: 'HH:mm:ss',
-                minute: 'HH:mm'
-              }
-            },
             title: {
               display: true,
-              text: 'Time'
+              text: 'Sample #'
             }
           },
           y: {
@@ -96,35 +114,59 @@
       }
     });
 
-    async function fetchFromWorker() {
+    async function fetchData() {
       try {
         const res = await fetch(url);
         const data = await res.json();
-
         const value = parseFloat(data.sensor1_current);
-        const t = new Date(data.updated_at);
+        const time = new Date(data.updated_at);
 
-        document.getElementById('value').textContent = value.toFixed(2) + ' °C';
-        document.getElementById('updated').textContent = 'Last updated: ' + t.toLocaleString();
+        if (!isNaN(value)) {
+          counter++;
+          valueEl.textContent = value.toFixed(2) + ' °C';
+          updatedEl.textContent = 'Last updated: ' + time.toLocaleString();
 
-        chart.data.labels.push(t);
-        chart.data.datasets[0].data.push(value);
+          chart.data.labels.push(counter);
+          chart.data.datasets[0].data.push(value);
+          csvData.push([counter, value.toFixed(2), time.toLocaleString()]);
 
-        if (chart.data.labels.length > 60) {
-          chart.data.labels.shift();
-          chart.data.datasets[0].data.shift();
+          if (chart.data.labels.length > 60) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+            csvData.splice(1, 1);  // keep CSV last 60 entries only
+          }
+
+          chart.update();
         }
-
-        chart.update();
       } catch (e) {
-        document.getElementById('value').textContent = 'Failed to load';
-        document.getElementById('updated').textContent = '';
-        console.error("Error fetching:", e);
+        valueEl.textContent = 'Failed';
+        updatedEl.textContent = '';
+        console.error(e);
       }
     }
 
-    fetchFromWorker();
-    setInterval(fetchFromWorker, 4000);
+    setInterval(fetchData, 4000);
+    fetchData();
+
+    function toggleFullscreen() {
+      const el = document.documentElement;
+      if (!document.fullscreenElement) {
+        el.requestFullscreen().catch(err => console.error(err));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    function exportCSV() {
+      let csvContent = "data:text/csv;charset=utf-8," + csvData.map(e => e.join(",")).join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "dewpoint_data.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   </script>
 </body>
 </html>
