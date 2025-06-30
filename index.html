@@ -5,81 +5,72 @@
   <title>Koner Dewpoint Monitoring</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
+    body {
       font-family: Arial, sans-serif;
       background: #f9f9f9;
       text-align: center;
-    }
-    #container {
-      padding: 2vw;
-      max-width: 90vw;
-      margin: auto;
+      padding: 20px;
+      margin: 0;
     }
     #logo {
-      max-width: 18vw;
-      margin-bottom: 1vw;
+      max-width: 180px;
+      margin-bottom: 10px;
     }
     h1 {
-      font-size: 3vw;
-      margin: 0.3vw 0;
+      font-size: 28px;
+      margin-bottom: 5px;
     }
     #range {
-      font-size: 1.2vw;
+      font-size: 14px;
       color: #555;
-      margin-bottom: 1.5vw;
+      margin-bottom: 20px;
     }
     #value {
-      font-size: 5vw;
+      font-size: 48px;
       color: #007bff;
-      margin: 0.5vw 0;
+      margin-top: 10px;
     }
     #updated {
-      font-size: 1.2vw;
+      font-size: 14px;
       color: #555;
-      margin-bottom: 2vw;
+      margin-bottom: 20px;
     }
     canvas {
-      max-width: 100%;
-      height: auto;
+      max-width: 800px;
+      width: 90%;
+      height: 300px;
+      margin: auto;
     }
     #buttons {
-      margin-top: 2vw;
+      margin-top: 20px;
     }
     button {
-      padding: 1vw 2vw;
-      font-size: 1vw;
-      margin: 0 1vw;
+      padding: 10px 20px;
+      font-size: 14px;
+      margin: 0 10px;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <img id="logo" src="https://arjunasolusi.github.io/koner_PDPmonitoring/Logo%20Koner%20hitam.png" alt="Koner Logo">
-    <h1>iot Dewpoint Monitoring</h1>
-    <div id="range">Range -50 ... +20 Ctd</div>
-    <div id="value">Loading...</div>
-    <div id="updated"></div>
+  <img id="logo" src="https://arjunasolusi.github.io/koner_PDPmonitoring/Logo%20Koner%20hitam.png" alt="Koner Logo">
+  <h1>iot Dewpoint Monitoring</h1>
+  <div id="range">Range -50 ... +20 Ctd</div>
+  <div id="value">Loading...</div>
+  <div id="updated">Waiting for data...</div>
+  <canvas id="trendChart"></canvas>
 
-    <canvas id="trendChart"></canvas>
-
-    <div id="buttons">
-      <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
-      <button onclick="exportCSV()">⬇ Export CSV</button>
-    </div>
+  <div id="buttons">
+    <button onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    <button onclick="exportCSV()">⬇ Export CSV</button>
   </div>
 
   <script>
     const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev";
-    const valueEl = document.getElementById('value');
-    const updatedEl = document.getElementById('updated');
-
-    const ctx = document.getElementById('trendChart').getContext('2d');
     let counter = 0;
     const csvData = [["Sample", "Value", "Timestamp"]];
 
+    const ctx = document.getElementById('trendChart').getContext('2d');
     const chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -96,19 +87,11 @@
         responsive: true,
         maintainAspectRatio: false,
         scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Sample #'
-            }
-          },
+          x: { title: { display: true, text: 'Sample #' } },
           y: {
             suggestedMin: -60,
             suggestedMax: 20,
-            title: {
-              display: true,
-              text: 'Dewpoint (°Ctd)'
-            }
+            title: { display: true, text: 'Dewpoint (°Ctd)' }
           }
         }
       }
@@ -122,10 +105,10 @@
         const time = new Date(data.updated_at);
 
         if (!isNaN(value)) {
-          counter++;
-          valueEl.textContent = value.toFixed(2) + ' °C';
-          updatedEl.textContent = 'Last updated: ' + time.toLocaleString();
+          document.getElementById('value').textContent = value.toFixed(2) + ' °C';
+          document.getElementById('updated').textContent = 'Last updated: ' + time.toLocaleString();
 
+          counter++;
           chart.data.labels.push(counter);
           chart.data.datasets[0].data.push(value);
           csvData.push([counter, value.toFixed(2), time.toLocaleString()]);
@@ -133,20 +116,17 @@
           if (chart.data.labels.length > 60) {
             chart.data.labels.shift();
             chart.data.datasets[0].data.shift();
-            csvData.splice(1, 1);  // keep CSV last 60 entries only
+            csvData.splice(1, 1);  // jaga agar CSV tetap 60 baris terakhir
           }
 
           chart.update();
         }
       } catch (e) {
-        valueEl.textContent = 'Failed';
-        updatedEl.textContent = '';
-        console.error(e);
+        document.getElementById('value').textContent = 'Failed';
+        document.getElementById('updated').textContent = '';
+        console.error("Fetch error:", e);
       }
     }
-
-    setInterval(fetchData, 4000);
-    fetchData();
 
     function toggleFullscreen() {
       const el = document.documentElement;
@@ -167,6 +147,9 @@
       link.click();
       document.body.removeChild(link);
     }
+
+    fetchData();
+    setInterval(fetchData, 4000);
   </script>
 </body>
 </html>
