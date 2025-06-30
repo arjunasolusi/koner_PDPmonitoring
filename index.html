@@ -10,6 +10,7 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 20px;
+      background: #f9f9f9;
     }
     #logo {
       max-width: 180px;
@@ -59,7 +60,7 @@
       data: {
         labels: [],
         datasets: [{
-          label: 'Dewpoint (°C)',
+          label: 'Dewpoint (°Ctd)',
           data: [],
           fill: false,
           borderColor: 'rgba(0, 123, 255, 1)',
@@ -84,23 +85,26 @@
             }
           },
           y: {
+            suggestedMin: -60,
+            suggestedMax: 20,
             title: {
               display: true,
-              text: 'Dewpoint (°C)'
+              text: 'Dewpoint (°Ctd)'
             }
           }
         }
       }
     });
 
-    async function fetchPublic() {
+    async function fetchFromWorker() {
       try {
         const res = await fetch(url);
         const data = await res.json();
-        const value = parseFloat(data[0].value);
-        const t = new Date(data[0].created_at);
 
-        document.getElementById('value').textContent = value + ' °C';
+        const value = parseFloat(data.sensor1_current);
+        const t = new Date(data.updated_at);
+
+        document.getElementById('value').textContent = value.toFixed(2) + ' °C';
         document.getElementById('updated').textContent = 'Last updated: ' + t.toLocaleString();
 
         chart.data.labels.push(t);
@@ -110,16 +114,17 @@
           chart.data.labels.shift();
           chart.data.datasets[0].data.shift();
         }
+
         chart.update();
       } catch (e) {
         document.getElementById('value').textContent = 'Failed to load';
         document.getElementById('updated').textContent = '';
-        console.error(e);
+        console.error("Error fetching:", e);
       }
     }
 
-    fetchPublic();
-    setInterval(fetchPublic, 4000);
+    fetchFromWorker();
+    setInterval(fetchFromWorker, 4000);
   </script>
 </body>
 </html>
