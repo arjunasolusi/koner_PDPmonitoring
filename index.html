@@ -108,7 +108,7 @@
 
     async function fetchData() {
       try {
-        const res = await fetch(url);
+        const res = await fetch(url + '?t=' + Date.now());
         const data = await res.json();
         const value = parseFloat(data.sensor1_current);
         const time = new Date(data.updated_at);
