@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -64,10 +65,13 @@
 
   <div id="buttons">
     <button onclick="exportCSV()">⬇ Export CSV</button>
+    <a href="https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev/logs" target="_blank" style="margin-left:10px;">
+      <button>📁 Browse CSV Logs</button>
+    </a>
   </div>
 
   <script>
-    const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev";
+    const url = "https://lingering-wind-45c5.arjunasolusisejahtera.workers.dev/api/live";
     let counter = 0;
     const csvData = [["Sample", "Value", "Timestamp"]];
 
@@ -138,7 +142,8 @@
     }
 
     function exportCSV() {
-      let csvContent = "data:text/csv;charset=utf-8," + csvData.map(e => e.join(",")).join("\n");
+      let csvContent = "data:text/csv;charset=utf-8," + csvData.map(e => e.join(",")).join("
+");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
