@@ -1,65 +1,85 @@
-// Ganti dengan URL Worker kamu
 const LIVE_API = "https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.dev/api/live";
-const GITHUB_API = "https://api.github.com/repos/arjunasolusi/koner_PDPmonitoring/contents/logs";
-const LOG_BASE_URL = "https://arjunasolusi.github.io/koner_PDPmonitoring/logs/";
+const BATCH_API = "https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.dev/api/batch";
 
 function formatTimestamp(ms) {
   const date = new Date(ms);
-  return date.toLocaleString("en-GB"); // bisa diubah ke 'id-ID'
+  return date.toLocaleString("en-GB"); // atau ganti ke 'id-ID' kalau mau Indonesia
 }
 
-async function fetchLiveData() {
-  try {
-    const res = await fetch(LIVE_API);
-    const data = await res.json();
+function updateLive(data) {
+  document.getElementById("live-value").textContent = `${data.value.toFixed(2)} °C`;
+  document.getElementById("updated-time").textContent = `Last updated: ${formatTimestamp(data.ts)}`;
+}
 
-    if (!data || typeof data.value !== "number") {
-      document.getElementById("live-value").textContent = "No live data available.";
-      return;
+function renderChart(dataArray) {
+  const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
+
+  const chartData = dataArray.map((entry, index) => ({
+    index: index + 1,
+    value: entry.value
+  }));
+
+  ReactDOM.render(
+    React.createElement(ResponsiveContainer, { width: "100%", height: 400 },
+      React.createElement(LineChart, { data: chartData },
+        React.createElement(CartesianGrid, { strokeDasharray: "3 3" }),
+        React.createElement(XAxis, { dataKey: "index", label: { value: "Sample #", position: "insideBottom", offset: -5 } }),
+        React.createElement(YAxis, { label: { value: "Dewpoint (°Ctd)", angle: -90, position: "insideLeft" } }),
+        React.createElement(Tooltip, null),
+        React.createElement(Legend, null),
+        React.createElement(Line, { type: "monotone", dataKey: "value", stroke: "#007bff", dot: true })
+      )
+    ),
+    document.getElementById("chart")
+  );
+}
+
+function generateCSV(data) {
+  const header = "timestamp,value\n";
+  const rows = data.map(d => `${d.ts},${d.value}`).join("\n");
+  return header + rows;
+}
+
+document.getElementById("export-btn").addEventListener("click", async () => {
+  try {
+    const res = await fetch(BATCH_API);
+    const data = await res.json();
+    const csv = generateCSV(data);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "dewpoint_log.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Export failed");
+    console.error(e);
+  }
+});
+
+async function init() {
+  try {
+    const resLive = await fetch(LIVE_API);
+    const dataLive = await resLive.json();
+    if (dataLive && typeof dataLive.value === "number") {
+      updateLive(dataLive);
     }
 
-    document.getElementById("live-value").innerHTML = `
-      <strong>${data.value.toFixed(2)} °Ctd</strong>
-      <br><small>Updated: ${formatTimestamp(data.ts)}</small>
-    `;
+    const resBatch = await fetch(BATCH_API);
+    const dataBatch = await resBatch.json();
+    if (Array.isArray(dataBatch)) {
+      renderChart(dataBatch);
+    }
   } catch (e) {
-    document.getElementById("live-value").textContent = "Error fetching live data.";
+    document.getElementById("live-value").textContent = "--";
+    document.getElementById("updated-time").textContent = "Failed to load data";
     console.error(e);
   }
 }
 
-async function fetchLogFiles() {
-  const logList = document.getElementById("log-files");
-  logList.innerHTML = "Loading...";
-
-  try {
-    const res = await fetch(GITHUB_API);
-    const files = await res.json();
-
-    logList.innerHTML = "";
-
-    files
-      .filter(file => file.name.endsWith(".csv"))
-      .sort((a, b) => b.name.localeCompare(a.name)) // terbaru di atas
-      .forEach(file => {
-        const link = document.createElement("a");
-        link.href = LOG_BASE_URL + file.name;
-        link.textContent = file.name;
-        link.download = file.name;
-
-        const li = document.createElement("li");
-        li.appendChild(link);
-        logList.appendChild(li);
-      });
-  } catch (e) {
-    logList.innerHTML = "Failed to load log files.";
-    console.error(e);
-  }
-}
-
-// Inisialisasi saat halaman dibuka
-fetchLiveData();
-fetchLogFiles();
-
-// Optional: auto-refresh live data setiap 10 detik
-setInterval(fetchLiveData, 4000);
+// Refresh data live setiap 4 detik
+setInterval(init, 4000);
+init();
