@@ -1,19 +1,16 @@
 const LIVE_API = "https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.dev/api/live";
 const BATCH_API = "https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.dev/api/batch";
 
-// Format timestamp jadi jam lokal
 function formatTimestamp(ms) {
   const date = new Date(ms);
-  return date.toLocaleString("en-GB"); // atau ganti 'id-ID'
+  return date.toLocaleString("en-GB"); // atau ganti ke 'id-ID' kalau mau Indonesia
 }
 
-// Tampilkan live value
 function updateLive(data) {
   document.getElementById("live-value").textContent = `${data.value.toFixed(2)} °C`;
   document.getElementById("updated-time").textContent = `Last updated: ${formatTimestamp(data.ts)}`;
 }
 
-// Tampilkan chart
 function renderChart(dataArray) {
   const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 
@@ -37,14 +34,12 @@ function renderChart(dataArray) {
   );
 }
 
-// Convert array ke CSV
 function generateCSV(data) {
   const header = "timestamp,value\n";
   const rows = data.map(d => `${d.ts},${d.value}`).join("\n");
   return header + rows;
 }
 
-// Tombol export
 document.getElementById("export-btn").addEventListener("click", async () => {
   try {
     const res = await fetch(BATCH_API);
@@ -65,7 +60,6 @@ document.getElementById("export-btn").addEventListener("click", async () => {
   }
 });
 
-// Fungsi utama: fetch live + chart
 async function init() {
   try {
     const resLive = await fetch(LIVE_API);
@@ -73,23 +67,19 @@ async function init() {
     if (dataLive && typeof dataLive.value === "number") {
       updateLive(dataLive);
     }
-  } catch (e) {
-    console.warn("Failed to update live value");
-    // Jangan reset tampilan
-  }
 
-  try {
     const resBatch = await fetch(BATCH_API);
     const dataBatch = await resBatch.json();
     if (Array.isArray(dataBatch)) {
       renderChart(dataBatch);
     }
   } catch (e) {
-    console.warn("Failed to update chart data");
-    // Jangan reset tampilan
+    document.getElementById("live-value").textContent = "--";
+    document.getElementById("updated-time").textContent = "Failed to load data";
+    console.error(e);
   }
 }
 
-// Jalankan pertama kali dan setiap 4 detik
-init();
+// Refresh data live setiap 4 detik
 setInterval(init, 4000);
+init();
