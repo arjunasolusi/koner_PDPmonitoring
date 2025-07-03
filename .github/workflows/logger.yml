@@ -14,7 +14,7 @@ jobs:
 
       - name: Fetch batch data from Cloudflare
         run: |
-          curl -s https://your-cloudflare-url.workers.dev/api/batch -o data.json
+          curl -s https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.dev/api/batch -o data.json
           if [ ! -s data.json ]; then
             echo "No new data, exiting..."
             exit 0
