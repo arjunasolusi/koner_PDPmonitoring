@@ -3,7 +3,7 @@ const BATCH_API = "https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.de
 
 function formatTimestamp(ms) {
   const date = new Date(ms);
-  return date.toLocaleString("en-GB"); // atau ganti ke 'id-ID' kalau mau Indonesia
+  return date.toLocaleString("en-GB");
 }
 
 function updateLive(data) {
@@ -67,19 +67,22 @@ async function init() {
     if (dataLive && typeof dataLive.value === "number") {
       updateLive(dataLive);
     }
+  } catch (e) {
+    console.warn("Failed to fetch live data");
+  }
 
+  try {
     const resBatch = await fetch(BATCH_API);
     const dataBatch = await resBatch.json();
+    console.log("Chart data fetched:", dataBatch);
+
     if (Array.isArray(dataBatch)) {
       renderChart(dataBatch);
     }
   } catch (e) {
-    document.getElementById("live-value").textContent = "--";
-    document.getElementById("updated-time").textContent = "Failed to load data";
-    console.error(e);
+    console.error("Chart render failed:", e); // tampilkan error detail
   }
 }
 
-// Refresh data live setiap 4 detik
-setInterval(init, 4000);
 init();
+setInterval(init, 4000);
