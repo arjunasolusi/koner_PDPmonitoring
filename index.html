@@ -1,112 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Koner Dewpoint Monitoring</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f9f9f9;
-      text-align: center;
-      padding: 20px;
-    }
-    #logo { max-width: 180px; margin-bottom: 10px; }
-    h1 { font-size: 28px; margin: 5px 0; }
-    #range { font-size: 14px; color: #555; }
-    #value { font-size: 48px; color: #007bff; margin-top: 10px; }
-    #updated { font-size: 14px; color: #555; margin-bottom: 20px; }
-    #chart-container { width: 90%; max-width: 800px; height: 300px; margin: 0 auto 20px auto; }
-    button { padding: 10px 20px; font-size: 14px; cursor: pointer; margin: 5px; }
-  </style>
+  <meta charset="UTF-8">
+  <title>Koner Dewpoint Logger</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <img id="logo" src="https://arjunasolusi.github.io/koner_PDPmonitoring/Logo%20Koner%20hitam.png" alt="Koner Logo">
-  <h1>iot Dewpoint Monitoring</h1>
-  <div id="range">Range -50 ... +20 °Ctd</div>
-  <div id="value">Loading...</div>
-  <div id="updated">Waiting for data...</div>
+  <h1>Koner Dewpoint Monitoring</h1>
+  <div id="live-value">Loading...</div>
 
-  <div id="chart-container">
-    <canvas id="trendChart"></canvas>
-  </div>
+  <h2>CSV Log Files</h2>
+  <ul id="log-files">Loading...</ul>
 
-  <div>
-    <button onclick="exportCSV()">⬇ Export CSV</button>
-    <a href="https://github.com/arjunasolusi/koner_PDPmonitoring/tree/main/logs" target="_blank">
-      <button>📁 Browse CSV Logs</button>
-    </a>
-  </div>
-
-  <script>
-    const url = "https://twilight-shadow-d4a1.arjunasolusisejahtera.workers.dev/api/live";
-    const csvData = [["Sample", "Value", "Timestamp"]];
-    let counter = 0;
-
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    const chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Dewpoint (°Ctd)',
-          data: [],
-          borderColor: '#007bff',
-          backgroundColor: 'rgba(0, 123, 255, 0.2)',
-          fill: false,
-          tension: 0.1
-        }]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          x: { title: { display: true, text: 'Sample #' } },
-          y: { suggestedMin: -60, suggestedMax: 20, title: { display: true, text: 'Dewpoint (°Ctd)' } }
-        }
-      }
-    });
-
-    async function fetchData() {
-      try {
-        const res = await fetch(url + '?t=' + Date.now());
-        const data = await res.json();
-        const value = parseFloat(data.value);
-        const time = new Date(data.ts);
-
-        if (!isNaN(value)) {
-          document.getElementById('value').textContent = value.toFixed(2) + ' °C';
-          document.getElementById('updated').textContent = 'Last updated: ' + new Date().toLocaleString();
-
-          counter++;
-          chart.data.labels.push(counter);
-          chart.data.datasets[0].data.push(value);
-          csvData.push([counter, value.toFixed(2), new Date().toLocaleString()]);
-
-          if (chart.data.labels.length > 60) {
-            chart.data.labels.shift();
-            chart.data.datasets[0].data.shift();
-            csvData.splice(1, 1);
-          }
-
-          chart.update();
-        }
-      } catch (err) {
-        document.getElementById('value').textContent = 'Failed';
-        document.getElementById('updated').textContent = '';
-        console.error(err);
-      }
-    }
-
-    function exportCSV() {
-      let csv = "data:text/csv;charset=utf-8," + csvData.map(e => e.join(",")).join("\n");
-      const link = document.createElement("a");
-      link.href = encodeURI(csv);
-      link.download = "dewpoint_data.csv";
-      link.click();
-    }
-
-    fetchData();
-    setInterval(fetchData, 4000);
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
