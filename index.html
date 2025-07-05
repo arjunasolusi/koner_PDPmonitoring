@@ -4,63 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Koner Dewpoint Monitoring</title>
-
-  <!-- React & Recharts -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/recharts/umd/Recharts.min.js"></script>
-
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 2rem;
-    }
-    h1 {
-      margin-bottom: 0.3rem;
-    }
-    .logo {
-      max-height: 40px;
-      margin-bottom: 1rem;
-    }
-    #live-value {
-      font-size: 3rem;
-      color: #007bff;
-      margin: 1rem 0;
-    }
-    #updated-time {
-      color: #666;
-      margin-bottom: 2rem;
-    }
-    #chart {
-      margin: auto;
-      width: 100%;
-      max-width: 800px;
-      height: 400px;
-    }
-    #export-btn {
-      margin-top: 2rem;
-      padding: 0.6rem 1.2rem;
-      font-size: 1rem;
-      border: 1px solid #333;
-      border-radius: 6px;
-      cursor: pointer;
-      background-color: white;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-
   <img src="Logo Koner hitam.png" alt="Koner Logo" class="logo" />
-  <h1>iot Dewpoint Monitoring</h1>
-  <div>Range -50 ... +20 Ctd</div>
+  <h1>IoT Dewpoint Monitoring</h1>
+  <div class="range">Range -50 ... +20 Ctd</div>
 
   <div id="live-value">-- °C</div>
   <div id="updated-time">Last updated: --</div>
 
-  <div id="chart"></div>
+  <canvas id="chart" width="800" height="400"></canvas>
 
-  <button id="export-btn">⬇ Export CSV</button>
+  <div class="buttons">
+    <button onclick="downloadCSV()">⬇ Download Semua</button>
+    <button onclick="downloadCSV(true)">⬇ Download 3 Hari Terakhir</button>
+  </div>
 
   <script src="script.js"></script>
 </body>
