@@ -88,7 +88,17 @@
       const cutoff = now - 20 * 60 * 1000;
 
       const filtered = entries.filter(([ts]) => new Date(ts).getTime() >= cutoff);
-      const labels = filtered.map(([ts]) => new Date(ts).toLocaleTimeString());
+
+      const labels = filtered.map(([ts]) => {
+        const utc = new Date(ts);
+        const wib = new Date(utc.getTime() + 7 * 60 * 60 * 1000);
+        return wib.toLocaleString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        });
+      });
+
       const values = filtered.map(([, v]) => v.value);
 
       if (labels.length > 0) {
@@ -96,8 +106,10 @@
         chart.data.datasets[0].data = values;
         chart.update();
 
+        const lastUTC = new Date(filtered[filtered.length - 1][0]);
+        const lastWIB = new Date(lastUTC.getTime() + 7 * 60 * 60 * 1000);
         liveValue.textContent = values[values.length - 1].toFixed(2);
-        lastUpdated.textContent = `Last updated: ${labels[labels.length - 1]}`;
+        lastUpdated.textContent = `Last updated: ${lastWIB.toLocaleString("id-ID")}`;
       }
     });
 
