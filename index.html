@@ -2,28 +2,142 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Koner Dewpoint Monitoring</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Koner Dewpoint Monitor</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <img src="Logo Koner hitam.png" alt="Koner Logo" class="logo" />
-  <h1>IoT Dewpoint Monitoring</h1>
-  <div class="range">Range -50 ... +20 Ctd</div>
-
-  <div id="live-value">-- °C</div>
-  <div id="updated-time">Last updated: --</div>
-
-  <canvas id="chart" width="800" height="400"></canvas>
-
-  <div class="buttons">
-    <button onclick="downloadCSV()">⬇ Download Semua</button>
-    <button onclick="downloadCSV(true)">⬇ Download 3 Hari Terakhir</button>
+  <div class="container">
+    <img src="Logo Koner hitam.png" alt="Logo" class="logo" />
+    <h1>IoT Dewpoint Monitoring</h1>
+    <div class="live-section">
+      <div class="live-label">Live Dewpoint:</div>
+      <div class="live-value" id="live-value">--</div>
+      <div class="live-range">Range -50 ... +20°Ctd</div>
+      <div class="timestamp" id="last-updated">Last updated: --</div>
+    </div>
+    <canvas id="trend-chart"></canvas>
+    <div class="buttons">
+      <button id="download-all">Download All Data</button>
+      <button id="download-3d">Download Last 3 Days</button>
+    </div>
   </div>
 
-  <script src="script.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      get
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AlzaSyCAHinoIlJVr2vsyGkcLFB7KQVIPZhUtos",
+      authDomain: "koner-dewpoint.firebaseapp.com",
+      databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "koner-dewpoint"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const rootRef = ref(db, "/");
+
+    const liveValue = document.getElementById("live-value");
+    const lastUpdated = document.getElementById("last-updated");
+    const downloadAllBtn = document.getElementById("download-all");
+    const download3DaysBtn = document.getElementById("download-3d");
+
+    const chart = new Chart(document.getElementById("trend-chart").getContext("2d"), {
+      type: "line",
+      data: {
+        labels: [],
+        datasets: [{
+          label: "Dewpoint (°Ctd)",
+          data: [],
+          borderColor: "#00ffc8",
+          borderWidth: 2,
+          tension: 0.2,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        scales: {
+          x: {
+            ticks: { color: "#aaa" },
+            grid: { color: "#222" }
+          },
+          y: {
+            ticks: { color: "#aaa" },
+            grid: { color: "#222" }
+          }
+        },
+        plugins: {
+          legend: { labels: { color: "#ccc" } }
+        }
+      }
+    });
+
+    onValue(rootRef, snapshot => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const entries = Object.entries(data).sort(([a], [b]) => new Date(a) - new Date(b));
+      const now = Date.now();
+      const cutoff = now - 20 * 60 * 1000;
+
+      const filtered = entries.filter(([ts]) => new Date(ts).getTime() >= cutoff);
+      const labels = filtered.map(([ts]) => new Date(ts).toLocaleTimeString());
+      const values = filtered.map(([, v]) => v.value);
+
+      if (labels.length > 0) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.update();
+
+        liveValue.textContent = values[values.length - 1].toFixed(2);
+        lastUpdated.textContent = `Last updated: ${labels[labels.length - 1]}`;
+      }
+    });
+
+    downloadAllBtn.onclick = async () => {
+      const snapshot = await get(rootRef);
+      const data = snapshot.val();
+      if (!data) return alert("No data to download");
+
+      downloadCSV(data, "all_data.csv");
+    };
+
+    download3DaysBtn.onclick = async () => {
+      const snapshot = await get(rootRef);
+      const data = snapshot.val();
+      if (!data) return alert("No data to download");
+
+      const now = Date.now();
+      const cutoff = now - 3 * 24 * 60 * 60 * 1000;
+      const filtered = Object.fromEntries(
+        Object.entries(data).filter(([ts]) => new Date(ts).getTime() >= cutoff)
+      );
+
+      downloadCSV(filtered, "last_3_days.csv");
+    };
+
+    function downloadCSV(data, filename) {
+      const rows = [["Timestamp", "Value"]];
+      Object.entries(data).forEach(([ts, { value }]) => {
+        rows.push([ts, value]);
+      });
+
+      const csv = rows.map(row => row.join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
+  </script>
 </body>
 </html>
