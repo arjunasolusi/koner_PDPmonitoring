@@ -5,21 +5,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Koner Dewpoint Monitor</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    canvas {
+      width: 800px !important;
+      height: 300px !important;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .buttons {
+      margin-top: 20px;
+    }
+
+    .buttons button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .live-section {
+      margin-bottom: 20px;
+    }
+
+    .live-label {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .live-value {
+      font-size: 36px;
+      margin: 5px 0;
+    }
+
+    .live-range {
+      font-size: 14px;
+      color: #ccc;
+    }
+
+    .timestamp {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .logo {
+      max-width: 150px;
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
     <img src="Logo Koner hitam.png" alt="Logo" class="logo" />
     <h1>IoT Dewpoint Monitoring</h1>
+
     <div class="live-section">
       <div class="live-label">Live Dewpoint:</div>
       <div class="live-value" id="live-value">--</div>
       <div class="live-range">Range -50 ... +20°Ctd</div>
       <div class="timestamp" id="last-updated">Last updated: --</div>
     </div>
+
     <canvas id="trend-chart"></canvas>
+
     <div class="buttons">
       <button id="download-all">Download All Data</button>
       <button id="download-3d">Download Last 3 Days</button>
+      <button id="download-24h">Download Last 24 Hours</button>
     </div>
   </div>
 
@@ -85,16 +151,16 @@
 
       const entries = Object.entries(data).sort(([a], [b]) => new Date(a) - new Date(b));
       const now = Date.now();
-      const cutoff = now - 20 * 60 * 1000;
+      const cutoff = now - 20 * 60 * 1000; // 20 minutes
 
       const filtered = entries.filter(([ts]) => new Date(ts).getTime() >= cutoff);
 
       const labels = filtered.map(([ts]) => {
         const local = new Date(ts);
-    return local.toLocaleString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit"
+        return local.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
         });
       });
 
@@ -106,8 +172,8 @@
         chart.update();
 
         const lastLocal = new Date(filtered[filtered.length - 1][0]);
-liveValue.textContent = values[values.length - 1].toFixed(2);
-lastUpdated.textContent = `Last updated: ${lastLocal.toLocaleString("id-ID")}`;
+        liveValue.textContent = values[values.length - 1].toFixed(2);
+        lastUpdated.textContent = `Last updated: ${lastLocal.toLocaleString("id-ID")}`;
       }
     });
 
@@ -146,7 +212,6 @@ lastUpdated.textContent = `Last updated: ${lastLocal.toLocaleString("id-ID")}`;
 
       downloadCSV(filtered, "last_24_hours.csv");
     };
-
 
     function downloadCSV(data, filename) {
       const rows = [["Timestamp", "Value"]];
