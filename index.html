@@ -47,6 +47,7 @@
     const lastUpdated = document.getElementById("last-updated");
     const downloadAllBtn = document.getElementById("download-all");
     const download3DaysBtn = document.getElementById("download-3d");
+    const download24hBtn = document.getElementById("download-24h");
 
     const chart = new Chart(document.getElementById("trend-chart").getContext("2d"), {
       type: "line",
@@ -89,12 +90,11 @@
       const filtered = entries.filter(([ts]) => new Date(ts).getTime() >= cutoff);
 
       const labels = filtered.map(([ts]) => {
-        const utc = new Date(ts);
-        const wib = new Date(utc.getTime() + 7 * 60 * 60 * 1000);
-        return wib.toLocaleString("id-ID", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
+        const local = new Date(ts);
+    return local.toLocaleString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
         });
       });
 
@@ -105,10 +105,9 @@
         chart.data.datasets[0].data = values;
         chart.update();
 
-        const lastUTC = new Date(filtered[filtered.length - 1][0]);
-        const lastWIB = new Date(lastUTC.getTime() + 7 * 60 * 60 * 1000);
-        liveValue.textContent = values[values.length - 1].toFixed(2);
-        lastUpdated.textContent = `Last updated: ${lastWIB.toLocaleString("id-ID")}`;
+        const lastLocal = new Date(filtered[filtered.length - 1][0]);
+liveValue.textContent = values[values.length - 1].toFixed(2);
+lastUpdated.textContent = `Last updated: ${lastLocal.toLocaleString("id-ID")}`;
       }
     });
 
@@ -133,6 +132,21 @@
 
       downloadCSV(filtered, "last_3_days.csv");
     };
+
+    download24hBtn.onclick = async () => {
+      const snapshot = await get(rootRef);
+      const data = snapshot.val();
+      if (!data) return alert("No data to download");
+
+      const now = Date.now();
+      const cutoff = now - 24 * 60 * 60 * 1000;
+      const filtered = Object.fromEntries(
+        Object.entries(data).filter(([ts]) => new Date(ts).getTime() >= cutoff)
+      );
+
+      downloadCSV(filtered, "last_24_hours.csv");
+    };
+
 
     function downloadCSV(data, filename) {
       const rows = [["Timestamp", "Value"]];
