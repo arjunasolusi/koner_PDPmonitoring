@@ -2,7 +2,7 @@ name: Firebase Cleanup
 
 on:
   schedule:
-    - cron: '0 1 * * *' # Daily at 1:00 AM UTC
+    - cron: '0 15 1,15 * *' # Daily at 1:00 AM UTC
   workflow_dispatch:
 
 jobs:
