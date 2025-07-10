@@ -1,0 +1,32 @@
+name: Firebase Cleanup
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # Every day at 1:00 AM UTC
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean up old Firebase entries
+        run: |
+          echo "Starting cleanup..."
+
+          URL="https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app/device1.json"
+          
+          # Get all entries from Firebase
+          response=$(curl -s "$URL")
+
+          # Current time in ms
+          now=$(date +%s000)
+          cutoff=$((now - 7776000000))  # 90 days in ms
+
+          # Loop through keys with old timestamps
+          echo "$response" | jq -r "to_entries[] | select(.value.timestamp < $cutoff) | .key" |
+          while read -r key; do
+            echo "Deleting: $key"
+            curl -s -X DELETE "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app/device1/$key.json"
+          done
+
+          echo "Cleanup complete."
