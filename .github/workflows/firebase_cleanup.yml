@@ -17,7 +17,7 @@ jobs:
           response=$(curl -s "$URL")
 
           now=$(date +%s)
-          cutoff=$((now - 7776000))  # 90 days in seconds
+          cutoff=$((now - 5184000))  # 90 days in seconds
 
           echo "$response" | jq -r 'keys[]' |
           while read -r key; do
