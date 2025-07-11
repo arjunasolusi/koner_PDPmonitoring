@@ -1,0 +1,51 @@
+name: Monthly Report
+
+on:
+  schedule:
+    - cron: '0 1 1 * *' # Tanggal 1 jam 1 pagi UTC (8 pagi WIB)
+  workflow_dispatch:
+
+jobs:
+  send_report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+
+      - name: Fetch data from Firebase
+        run: |
+          START_DATE=$(date -u -d "$(date +%Y-%m-01) -1 month" +%Y-%m-01)
+          END_DATE=$(date -u -d "$(date +%Y-%m-01)" +%Y-%m-%d)
+          echo "Fetching data from $START_DATE to $END_DATE"
+
+          URL="https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app/device1.json"
+          response=$(curl -s "$URL")
+
+          echo "$response" | jq -r --arg start "$START_DATE" --arg end "$END_DATE" '
+            to_entries
+            | map(select(
+                (.value.timestamp/1000 | strftime("%Y-%m-%d")) >= $start and
+                (.value.timestamp/1000 | strftime("%Y-%m-%d")) < $end
+              ))
+            | map(.value)
+            | (["timestamp,value"] | @csv), (.[] | [.timestamp, .value] | @csv)
+          ' > monthly.csv
+
+      - name: Send email with attachment
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "Koner Dewpoint Monthly Report"
+          to: ${{ secrets.EMAIL_RECIPIENT }}
+          from: ${{ secrets.EMAIL_FROM }}
+          body: |
+            Berikut terlampir laporan dewpoint bulanan dari sistem monitoring Koner.
+          attachments: monthly.csv
