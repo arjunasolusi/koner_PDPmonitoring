@@ -17,24 +17,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y curl jq
 
-      - name: Fetch data from Firebase
+     - name: Fetch data from Firebase
         run: |
-          START_DATE=$(date -u -d "$(date +%Y-%m-01) -1 month" +%Y-%m-01)
-          END_DATE=$(date -u -d "$(date +%Y-%m-01)" +%Y-%m-%d)
-          echo "Fetching data from $START_DATE to $END_DATE"
+          START_DATE=$(date -u -d "$(date +%Y-%m-01) -1 month" +%s)
+          END_DATE=$(date -u -d "$(date +%Y-%m-01)" +%s)
+          echo "Unix start: $START_DATE"
+          echo "Unix end: $END_DATE"
 
           URL="https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app/device1.json"
           response=$(curl -s "$URL")
 
-          echo "$response" | jq -r --arg start "$START_DATE" --arg end "$END_DATE" '
+          echo "$response" | jq -r --argjson start $((START_DATE * 1000)) --argjson end $((END_DATE * 1000)) '
             to_entries
-            | map(select(
-                (.value.timestamp/1000 | strftime("%Y-%m-%d")) >= $start and
-                (.value.timestamp/1000 | strftime("%Y-%m-%d")) < $end
-              ))
+            | map(select(.value.timestamp != null and .value.timestamp >= $start and .value.timestamp < $end))
             | map(.value)
-            | (["timestamp,value"] | @csv), (.[] | [.timestamp, .value] | @csv)
+            | (["timestamp","value"] | @csv), (.[] | [.timestamp, .value] | @csv)
           ' > monthly.csv
+
+          echo "CSV generated:"
+          cat monthly.csv
+
 
       - name: Send email with attachment
         uses: dawidd6/action-send-mail@v3
