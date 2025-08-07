@@ -93,6 +93,12 @@
   </div>
 
   <script type="module">
+    const PASSCODE = "kid-25010";
+    const input = prompt("PASSCODE");
+    if (input !== PASSCODE) {
+      document.body.innerHTML = "<h1>Akses ditolak</h1>";
+      throw new Error("Unauthorized");
+    }
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
       getDatabase,
