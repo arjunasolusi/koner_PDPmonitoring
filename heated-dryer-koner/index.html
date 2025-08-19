@@ -6,11 +6,6 @@
   <title>Koner Heated Dryer — Live</title>
   <style>
     :root {
-      --c-press: #2563eb;  /* B1 */
-      --c-press2:#60a5fa;  /* B2 */
-      --c-temp:  #16a34a;  /* R1 */
-      --c-temp2: #22c55e;  /* R2 */
-      --c-dew:   #ef4444;  /* dew */
       --border:  #e5e7eb;
       --muted:   #6b7280;
     }
@@ -47,8 +42,25 @@
     // Constants
     const deviceId = "heateddryer";
     const TAGS   = ["B1","B2","R1","R2","dew"];
-    const COLORS = { B1:"#2563eb", B2:"#60a5fa", R1:"#16a34a", R2:"#22c55e", dew:"#ef4444" };
+    // Colors as requested
+    const COLORS = {
+      B1: "#ef4444",  // red
+      B2: "#f59e0b",  // yellow/amber
+      R1: "#16a34a",  // green
+      R2: "#a855f7",  // purple
+      dew:"#2563eb"   // blue
+    };
     const TAG_AXIS = { B1:"pressure", B2:"pressure", R1:"temp", R2:"temp", dew:"dew" };
+
+    // Sequence map (1..18)
+    const SEQ_MAP = {
+       1:"Expansion B2",  2:"Heating B2",  3:"After Heating B2",
+       4:"Cooling B2",    5:"After Cooling B2", 6:"Pressurization B2",
+       7:"Standby B1",    8:"Parallel Flow",    9:"Switching to B2",
+      10:"Expansion B1", 11:"Heating B1",     12:"After Heating B1",
+      13:"Cooling B1",   14:"After Cooling B1",15:"Pressurization B1",
+      16:"Standby B2",   17:"Parallel Flow",  18:"Switching to B1"
+    };
 
     // Init
     const app = initializeApp(firebaseConfig);
@@ -84,7 +96,9 @@
       const v = snap.val();
       setVal("B1", v.B1, " bar"); setVal("B2", v.B2, " bar");
       setVal("R1", v.R1, " °C");  setVal("R2", v.R2, " °C");
-      setVal("dew", v.dew, " °C dp"); setVal("seq", v.seq ?? "—", "");
+      setVal("dew", v.dew, " °C dp");
+      const seqNum = Number(v.seq);
+      el.seq.textContent = Number.isFinite(seqNum) ? `${seqNum} • ${SEQ_MAP[seqNum] || "Unknown"}` : "—";
       const ts = toMs(v.ts); el.last.textContent = "Last updated: " + (ts ? new Date(ts).toLocaleString() : "—");
     }
     refreshLatest(); setInterval(refreshLatest, 15000);
@@ -97,12 +111,11 @@
       backgroundColor: COLORS[t],
       data: [],
       borderWidth: 2,
-      tension: .2,
-      // show a dot when only 1 point exists
+      tension: 0,                 // straight lines (no wavy)
       pointRadius: ctx => (ctx.dataset.data && ctx.dataset.data.length < 2 ? 3 : 0),
       pointHoverRadius: 4,
-      yAxisID: TAG_AXIS[t],
-      borderDash: (t==="B2" || t==="R2") ? [6,4] : []
+      yAxisID: TAG_AXIS[t]
+      // no borderDash — all solid
     }));
 
     const chart = new Chart(ctx, {
@@ -120,24 +133,24 @@
         },
         scales: {
           x: { type: "time", time: { unit: "hour", displayFormats: { hour: "HH:mm" } }, ticks: { autoSkip: true, maxRotation: 0 } },
-          y: { display: false }, // dummy
+          y: { display: false },
 
-          // === 8 equal portions on each Y ===
+          // 8 equal portions each; only pressure draws the grid
           pressure: {
             type: "linear", position: "left", offset: false,
-            min: 0, max: 16, ticks: { stepSize: 2, color: "#2563eb" },
+            min: 0, max: 16, ticks: { stepSize: 2, color: "#6b7280" },
             title: { display: true, text: "Pressure (bar)" },
-            grid: { color: "rgba(0,0,0,0.06)" }   // this axis draws the grid
+            grid: { color: "rgba(0,0,0,0.06)" }
           },
           temp: {
             type: "linear", position: "left", offset: false,
-            min: 0, max: 200, ticks: { stepSize: 25, color: "#16a34a" },
+            min: 0, max: 200, ticks: { stepSize: 25, color: "#6b7280" },
             title: { display: true, text: "Temperature (°C)" },
             grid: { drawOnChartArea: false }
           },
           dew: {
             type: "linear", position: "left", offset: false,
-            min: -100, max: 20, ticks: { stepSize: 15, color: "#ef4444" },
+            min: -100, max: 20, ticks: { stepSize: 15, color: "#2563eb" },
             title: { display: true, text: "Dew Point (°C)" },
             grid: { drawOnChartArea: false }
           }
@@ -188,15 +201,14 @@
     document.getElementById("dlcsv").onclick = downloadAllStreamsCSV;
 
     async function downloadAllStreamsCSV(){
-      // rows keyed by timestamp (ms)
       const rowsByTs = Object.create(null);
 
-      // fetch all tags (m5 subtree)
+      // fetch all tags' m5 trees
       const snaps = await Promise.all(
         TAGS.map(tag => get(ref(db, `/${deviceId}/streams/${tag}/m5`)).then(snap => ({ tag, snap })))
       );
 
-      // recursive collector (schema-agnostic)
+      // recursive collector (handles YYYY/MM/DD/HHmm nesting)
       function collect(tag, node){
         if (!node) return;
         if (Array.isArray(node)) { node.forEach(n => collect(tag, n)); return; }
