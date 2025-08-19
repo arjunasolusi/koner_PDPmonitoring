@@ -1,201 +1,351 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Koner Heated Dryer — Live</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Koner Heated Dryer – 24h Streams</title>
+
+  <!-- Chart.js v4 + date adapter -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color:#111; background:#fff; }
-    h1 { margin: 0 0 16px; }
-    .grid { display: grid; grid-template-columns: repeat(3,minmax(220px,1fr)); gap: 16px; }
-    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-    .label { color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
-    .value { font-size:28px; font-weight:700; margin-top:6px; }
-    .ts    { margin-top:12px; color:#9ca3af; font-size:12px; }
-    .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:16px 0; }
-    button, select { padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; background:#fff; cursor:pointer; }
-    button.active { background:#111; color:#fff; border-color:#111; }
-    canvas { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px; }
+    :root {
+      --bg: #0b0c10;
+      --fg: #e5e7eb;
+      --muted: #a3a3a3;
+
+      /* axis / dataset colors */
+      --c-pressure: #1f77b4; /* B1/B2 */
+      --c-temp:     #ff7f0e; /* R1/R2 */
+      --c-dew:      #2ca02c; /* dew   */
+      --tile-bg: #111318;
+      --tile-br: #1f242f;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    }
+
+    .wrap {
+      max-width: 1200px;
+      margin: 24px auto 48px;
+      padding: 0 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+    header .sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* Tiles for /latest (optional; safe to remove if you only want chart) */
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .tile {
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-br);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .tile .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .tile .value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    /* Chart container – fixed height 420px */
+    .chart-wrap {
+      height: 420px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-br);
+      border-radius: 16px;
+      padding: 10px 12px 8px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    .stamp {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    @media (max-width: 980px) {
+      .tiles { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Koner Heated Dryer • 24 h Trend</h1>
+      <div class="sub">B1,B2=Pressure (bar) • R1,R2=Temperature (°C) • dew=Dew Point (°C)</div>
+    </header>
 
-  <!-- Chart.js + date adapter for time axis -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+    <!-- Latest value tiles (optional) -->
+    <div class="tiles" id="tiles">
+      <div class="tile"><div class="label">B1 (bar)</div><div class="value" id="tB1">–</div></div>
+      <div class="tile"><div class="label">B2 (bar)</div><div class="value" id="tB2">–</div></div>
+      <div class="tile"><div class="label">R1 (°C)</div><div class="value" id="tR1">–</div></div>
+      <div class="tile"><div class="label">R2 (°C)</div><div class="value" id="tR2">–</div></div>
+      <div class="tile"><div class="label">Dew (°C)</div><div class="value" id="tDew">–</div></div>
+    </div>
 
-  <!-- Firebase (modular) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    <div class="chart-wrap">
+      <canvas id="trend"></canvas>
+    </div>
+    <div class="stamp" id="stamp">Loading…</div>
+  </div>
 
-    // ====== EDIT THESE VALUES (Project settings -> Web API key, etc.) ======
-    const firebaseConfig = {
-      apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
-      authDomain: "koner-dewpoint.firebaseapp.com",
-      databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "koner-dewpoint"
+  <script>
+    // ======= CONFIG – replace with your Firebase RTDB base URL (no trailing slash) =======
+    // Example: const DB_URL = 'https://your-project-id-default-rtdb.asia-southeast1.firebasedatabase.app';
+    const DB_URL = 'https://<YOUR_RTDATABASE_DOMAIN>'; // ← TODO
+
+    // Paths
+    const STREAMS_PATH = '/heateddryer/streams.json';
+    const LATEST_PATH  = '/heateddryer/latest.json';
+
+    // Colors
+    const COLORS = {
+      B1: getComputedStyle(document.documentElement).getPropertyValue('--c-pressure').trim(),
+      B2: getComputedStyle(document.documentElement).getPropertyValue('--c-pressure').trim(),
+      R1: getComputedStyle(document.documentElement).getPropertyValue('--c-temp').trim(),
+      R2: getComputedStyle(document.documentElement).getPropertyValue('--c-temp').trim(),
+      dew: getComputedStyle(document.documentElement).getPropertyValue('--c-dew').trim()
     };
-    // ======================================================================
 
-    // Basic constants
-    const deviceId = "heateddryer";
-    const TAGS = ["B1","B2","R1","R2","dew"];
-    // Nice distinct colors
-    const COLORS = { B1:"#2563eb", B2:"#60a5fa", R1:"#16a34a", R2:"#22c55e", dew:"#ef4444" };
+    // Axis assignment
+    const TAG_AXIS = { B1: 'pressure', B2: 'pressure', R1: 'temp', R2: 'temp', dew: 'dew' };
+    const TAG_UNIT = { B1: 'bar', B2: 'bar', R1: '°C', R2: '°C', dew: '°C' };
 
-    // Init Firebase
-    const app = initializeApp(firebaseConfig);
-    const db  = getDatabase(app);
+    // 24h window only
+    const H24 = 24 * 60 * 60 * 1000;
 
-    // Build UI (tiles + controls + chart)
-    const root = document.body;
-    root.insertAdjacentHTML("beforeend", `
-      <h1>Heated Dryer — Live</h1>
-      <div class="grid">
-        <div class="card"><div class="label">Pressure A (B1)</div><div id="B1" class="value">—</div></div>
-        <div class="card"><div class="label">Pressure B (B2)</div><div id="B2" class="value">—</div></div>
-        <div class="card"><div class="label">Dew Point</div><div id="dew" class="value">—</div></div>
-        <div class="card"><div class="label">Temperature 1 (R1)</div><div id="R1" class="value">—</div></div>
-        <div class="card"><div class="label">Temperature 2 (R2)</div><div id="R2" class="value">—</div></div>
-        <div class="card"><div class="label">Sequence</div><div id="seq" class="value">—</div></div>
-      </div>
-      <p class="ts" id="last">Last updated: —</p>
-
-      <div class="controls">
-        <span class="label" style="color:#111;text-transform:none">Y‑Axis preset:</span>
-        <button id="yPressure">Pressure (0–16)</button>
-        <button id="yTemp">Temperature (0–200)</button>
-        <button id="yDew">Dew (−100..+20)</button>
-        <span class="label" style="color:#111;text-transform:none;margin-left:8px">Range:</span>
-        <select id="hours">
-          <option value="2">Last 2 h</option>
-          <option value="6" selected>Last 6 h</option>
-          <option value="24">Last 24 h</option>
-        </select>
-        <button id="reload">Reload</button>
-      </div>
-
-      <canvas id="trend" height="300"></canvas>
-    `);
-
-    // Latest tiles
-    const el = Object.fromEntries([...TAGS, "seq", "last"].map(id => [id, document.getElementById(id)]));
-    async function refreshLatest(){
-      const snap = await get(ref(db, `/${deviceId}/latest`));
-      if (!snap.exists()) return;
-      const v = snap.val();
-      setVal("B1", v.B1, " bar");
-      setVal("B2", v.B2, " bar");
-      setVal("R1", v.R1, " °C");
-      setVal("R2", v.R2, " °C");
-      setVal("dew", v.dew, " °C dp");
-      setVal("seq", v.seq ?? "—", "");
-      el.last.textContent = "Last updated: " + (v.ts || "—");
-    }
-    function setVal(id, val, unit){
-      const n = (val===undefined || val===null) ? "—" : `${val}${unit}`;
-      el[id].textContent = n;
-    }
-    refreshLatest();
-    // Poll latest a bit faster (if sequence changes mid-interval)
-    setInterval(refreshLatest, 15000);
-
-    // Chart.js setup
-    const ctx = document.getElementById("trend").getContext("2d");
-    const datasets = TAGS.map(t => ({
-      label: t, borderColor: COLORS[t], backgroundColor: COLORS[t],
-      data: [], borderWidth: 2, tension: .2, pointRadius: 0, yAxisID: "y"
-    }));
-    const chart = new Chart(ctx, {
-      type: "line",
-      data: { datasets },
-      options: {
-        parsing: false,
-        animation: false,
-        normalized: true,
-        scales: {
-          x: { type: "time", time: { unit: "minute" } },
-          y: { beginAtZero: false, suggestedMin: 0, suggestedMax: 16 } // default to Pressure preset
-        },
-        plugins: { legend: { display: true, position: "top" } }
-      }
-    });
-
-    // Y presets
-    const yBtns = {
-      pressure: document.getElementById("yPressure"),
-      temp:     document.getElementById("yTemp"),
-      dew:      document.getElementById("yDew")
+    // Helpers
+    const toMs = (t) => {
+      // upscale seconds epoch to ms if needed
+      if (typeof t === 'number' && t > 0 && t < 2e10) return t * 1000;
+      return t;
     };
-    function setActive(btn){
-      Object.values(yBtns).forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
+
+    // Chart instance
+    let chart;
+
+    function makeDataset(tag, points, styleIndex=0) {
+      // Slightly differentiate B1 vs B2 and R1 vs R2 (dash/opacity)
+      const baseColor = COLORS[tag];
+      const dash = (tag === 'B2' || tag === 'R2') ? [6, 4] : [];
+      const alpha = (tag === 'B2' || tag === 'R2') ? 0.7 : 1.0;
+
+      return {
+        label: tag,
+        data: points.map(p => ({ x: p.ts, y: p.val })),
+        borderColor: baseColor,
+        backgroundColor: baseColor + Math.floor(alpha * 255).toString(16),
+        yAxisID: TAG_AXIS[tag],
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.25,
+        borderDash: dash
+      };
     }
-    function applyYPreset(kind){
-      if (kind==="pressure"){ chart.options.scales.y.min = 0; chart.options.scales.y.max = 16; setActive(yBtns.pressure); }
-      if (kind==="temp"){     chart.options.scales.y.min = 0; chart.options.scales.y.max = 200; setActive(yBtns.temp); }
-      if (kind==="dew"){      chart.options.scales.y.min = -100; chart.options.scales.y.max = 20; setActive(yBtns.dew); }
-      chart.update();
-    }
-    yBtns.pressure.onclick = ()=> applyYPreset("pressure");
-    yBtns.temp.onclick     = ()=> applyYPreset("temp");
-    yBtns.dew.onclick      = ()=> applyYPreset("dew");
-    applyYPreset("pressure"); // default
 
-    // Load m5 streams for a time range
-    document.getElementById("reload").onclick = ()=> loadRange(parseInt(document.getElementById("hours").value,10));
-    loadRange(parseInt(document.getElementById("hours").value,10));
+    function buildChart(datasets) {
+      const ctx = document.getElementById('trend').getContext('2d');
 
-    // Also refresh chart every 5 minutes on the :00/:05/:10... boundary
-    setInterval(() => {
-      const m = new Date().getMinutes();
-      if ([0,5,10,15,20,25,30,35,40,45,50,55].includes(m) && new Date().getSeconds() < 5) {
-        loadRange(parseInt(document.getElementById("hours").value,10));
-      }
-    }, 4000);
+      // Register decimation plugin for performance on long series
+      Chart.register(Chart.registry.plugins.get('decimation'));
 
-    async function loadRange(hours){
-      // time window (local time, Jakarta +07 shown in ts)
-      const end = new Date();
-      const start = new Date(end.getTime() - hours*60*60*1000);
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          maintainAspectRatio: false,
+          animation: false,
+          parsing: false,
+          normalized: true,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            // Show legend labels but disable toggling (no legend toggle)
+            legend: {
+              position: 'bottom',
+              onClick: () => {} // noop to prevent hide/show
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const tag = ctx.dataset.label;
+                  const unit = TAG_UNIT[tag] || '';
+                  const v = (ctx.parsed.y !== null && isFinite(ctx.parsed.y)) ? ctx.parsed.y.toFixed(2) : '–';
+                  return `${tag}: ${v} ${unit}`;
+                }
+              }
+            },
+            decimation: { enabled: true, algorithm: 'lttb' }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'minute' },
+              ticks: { color: '#c2c7d0' },
+              grid: { color: 'rgba(255,255,255,0.06)' }
+            },
 
-      // Build list of {Y,M,D} to fetch (today + possible previous days)
-      const days = uniqueDaysBetween(start, end);
-
-      // Fetch per tag, per day
-      const series = Object.fromEntries(TAGS.map(t => [t, []]));
-      for (const tag of TAGS) {
-        for (const [Y,M,D] of days) {
-          const daySnap = await get(ref(db, `/${deviceId}/streams/${tag}/m5/${Y}/${M}/${D}`));
-          if (!daySnap.exists()) continue;
-          const dayObj = daySnap.val(); // keys: HHmm -> { ts, <tag>: value }
-          for (const [hm, rec] of Object.entries(dayObj)) {
-            // Use ISO timestamp (already +07:00) as x
-            const ts = new Date(rec.ts);
-            if (ts >= start && ts <= end && rec[tag] !== undefined) {
-              series[tag].push({ x: ts, y: Number(rec[tag]) });
+            // Three Y axes on the LEFT, offset to avoid label collision.
+            pressure: {
+              type: 'linear',
+              position: 'left',
+              offset: true,
+              suggestedMin: 0,
+              suggestedMax: 16,
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--c-pressure').trim()
+              },
+              title: {
+                display: true,
+                text: 'Pressure (bar)',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--c-pressure').trim()
+              },
+              grid: { color: 'rgba(255,255,255,0.06)' } // only pressure draws grid
+            },
+            temp: {
+              type: 'linear',
+              position: 'left',
+              offset: true,
+              suggestedMin: 0,
+              suggestedMax: 200,
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--c-temp').trim()
+              },
+              title: {
+                display: true,
+                text: 'Temperature (°C)',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--c-temp').trim()
+              },
+              grid: { drawOnChartArea: false } // avoid grid clutter
+            },
+            dew: {
+              type: 'linear',
+              position: 'left',
+              offset: true,
+              suggestedMin: -100,
+              suggestedMax: 20,
+              ticks: {
+                color: getComputedStyle(document.documentElement).getPropertyValue('--c-dew').trim()
+              },
+              title: {
+                display: true,
+                text: 'Dew Point (°C)',
+                color: getComputedStyle(document.documentElement).getPropertyValue('--c-dew').trim()
+              },
+              grid: { drawOnChartArea: false } // avoid grid clutter
             }
           }
         }
-        series[tag].sort((a,b)=>a.x - b.x);
-      }
-
-      // Apply to datasets
-      chart.data.datasets.forEach(ds => ds.data = series[ds.label]);
-      chart.update();
+      });
     }
 
-    // Helpers
-    function uniqueDaysBetween(start, end){
-      const out = [];
-      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-      while (d <= end) {
-        out.push([ String(d.getFullYear()), pad(d.getMonth()+1), pad(d.getDate()) ]);
-        d.setDate(d.getDate()+1);
-      }
-      return out;
+    function within24h(points) {
+      const now = Date.now();
+      const start = now - H24;
+      return points
+        .map(p => ({ ts: toMs(p.ts), val: Number(p.val) }))
+        .filter(p => p.ts >= start && p.ts <= now && isFinite(p.val))
+        .sort((a, b) => a.ts - b.ts);
     }
-    function pad(n){ return String(n).padStart(2, "0"); }
+
+    async function fetchJSON(path) {
+      const url = DB_URL.replace(/\/$/, '') + path;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function loadLatestTiles() {
+      try {
+        const latest = await fetchJSON(LATEST_PATH);
+        if (!latest || typeof latest !== 'object') return;
+
+        const fmt = (v, digits=2) => (v === undefined || v === null || !isFinite(v)) ? '–' : Number(v).toFixed(digits);
+
+        document.getElementById('tB1').textContent = fmt(latest.B1);
+        document.getElementById('tB2').textContent = fmt(latest.B2);
+        document.getElementById('tR1').textContent = fmt(latest.R1);
+        document.getElementById('tR2').textContent = fmt(latest.R2);
+        document.getElementById('tDew').textContent = fmt(latest.dew);
+
+        const ts = toMs(latest.ts || Date.now());
+        document.getElementById('stamp').textContent =
+          'Latest update: ' + new Date(ts).toLocaleString();
+      } catch (e) {
+        document.getElementById('stamp').textContent = 'Latest update: (unavailable)';
+        console.error(e);
+      }
+    }
+
+    async function loadStreams() {
+      const raw = await fetchJSON(STREAMS_PATH) || {};
+      const tags = ['B1', 'B2', 'R1', 'R2', 'dew'];
+
+      const datasets = [];
+      for (const tag of tags) {
+        const arr = Array.isArray(raw[tag]) ? raw[tag] : [];
+        const pts = within24h(arr);
+
+        // If no points in window, add a single NaN to preserve legend/axis mapping
+        if (pts.length === 0) {
+          datasets.push(makeDataset(tag, [{ ts: Date.now(), val: NaN }]));
+        } else {
+          datasets.push(makeDataset(tag, pts));
+        }
+      }
+
+      if (!chart) {
+        buildChart(datasets);
+      } else {
+        chart.data.datasets = datasets;
+        chart.update();
+      }
+    }
+
+    async function refreshAll() {
+      await Promise.all([loadStreams(), loadLatestTiles()]);
+    }
+
+    // Initial load + periodic refresh every 60s
+    refreshAll();
+    setInterval(refreshAll, 60_000);
   </script>
-</head>
-<body></body>
+</body>
 </html>
