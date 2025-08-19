@@ -6,11 +6,11 @@
   <title>Koner Heated Dryer — Live</title>
   <style>
     :root {
-      --c-press: #2563eb;  /* B1/B2 */
+      --c-press: #2563eb;  /* B1 */
       --c-press2:#60a5fa;  /* B2 */
-      --c-temp:  #16a34a;  /* R1/R2 */
+      --c-temp:  #16a34a;  /* R1 */
       --c-temp2: #22c55e;  /* R2 */
-      --c-dew:   #ef4444;  /* dew   */
+      --c-dew:   #ef4444;  /* dew */
       --border:  #e5e7eb;
       --muted:   #6b7280;
     }
@@ -23,6 +23,8 @@
     .ts    { margin-top:12px; color:#9ca3af; font-size:12px; }
     .chart-wrap { margin-top: 10px; height: 420px; }
     canvas { width: 100% !important; height: 100% !important; background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px; display:block; }
+    button { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; }
+    button:hover { background:#f8fafc; }
   </style>
 
   <!-- Chart.js + date adapter -->
@@ -41,7 +43,6 @@
       databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "koner-dewpoint"
     };
-    // ----------------------------------
 
     // Constants
     const deviceId = "heateddryer";
@@ -66,6 +67,10 @@
         <div class="card"><div class="label">Sequence</div><div id="seq" class="value">—</div></div>
       </div>
       <p class="ts" id="last">Last updated: —</p>
+
+      <div style="margin:8px 0 12px 0;">
+        <button id="dlcsv">Download streams (CSV)</button>
+      </div>
 
       <div class="chart-wrap"><canvas id="trend"></canvas></div>
     `);
@@ -96,7 +101,8 @@
       // show a dot when only 1 point exists
       pointRadius: ctx => (ctx.dataset.data && ctx.dataset.data.length < 2 ? 3 : 0),
       pointHoverRadius: 4,
-      yAxisID: TAG_AXIS[t]
+      yAxisID: TAG_AXIS[t],
+      borderDash: (t==="B2" || t==="R2") ? [6,4] : []
     }));
 
     const chart = new Chart(ctx, {
@@ -109,53 +115,35 @@
         maintainAspectRatio: false, // respect 420px container
         interaction: { mode: "nearest", intersect: false },
         plugins: {
-          // Legend visible but non-clickable
-          legend: {
-            display: true,
-            position: "top",
-            onClick: () => {} // disable toggle
-          },
+          legend: { display: true, position: "top", onClick: () => {} }, // labels only
           decimation: { enabled: true, algorithm: "lttb" }
         },
         scales: {
-          x: { type: "time", time: { unit: "minute" } },
+          x: { type: "time", time: { unit: "hour", displayFormats: { hour: "HH:mm" } }, ticks: { autoSkip: true, maxRotation: 0 } },
           y: { display: false }, // dummy
 
+          // === 8 equal portions on each Y ===
           pressure: {
-  type: "linear",
-  position: "left",
-  offset: false,                // align ticks with grid (no half-step padding)
-  min: 0,
-  max: 16,
-  ticks: { stepSize: 2, color: "#2563eb" }, // 0,2,4,...,16 (8 segments)
-  title: { display: true, text: "Pressure (bar)" },
-  grid: { color: "rgba(0,0,0,0.06)" }      // this axis draws the grid
-},
-temp: {
-  type: "linear",
-  position: "left",
-  offset: false,
-  min: 0,
-  max: 200,
-  ticks: { stepSize: 25, color: "#16a34a" }, // 0,25,...,200 (8 segments)
-  title: { display: true, text: "Temperature (°C)" },
-  grid: { drawOnChartArea: false }           // avoid double grids
-},
-dew: {
-  type: "linear",
-  position: "left",
-  offset: false,
-  min: -100,
-  max: 20,
-  ticks: { stepSize: 15, color: "#ef4444" }, // -100,-85,...,20 (8 segments)
-  title: { display: true, text: "Dew Point (°C)" },
-  grid: { drawOnChartArea: false }
-}
+            type: "linear", position: "left", offset: false,
+            min: 0, max: 16, ticks: { stepSize: 2, color: "#2563eb" },
+            title: { display: true, text: "Pressure (bar)" },
+            grid: { color: "rgba(0,0,0,0.06)" }   // this axis draws the grid
+          },
+          temp: {
+            type: "linear", position: "left", offset: false,
+            min: 0, max: 200, ticks: { stepSize: 25, color: "#16a34a" },
+            title: { display: true, text: "Temperature (°C)" },
+            grid: { drawOnChartArea: false }
+          },
+          dew: {
+            type: "linear", position: "left", offset: false,
+            min: -100, max: 20, ticks: { stepSize: 15, color: "#ef4444" },
+            title: { display: true, text: "Dew Point (°C)" },
+            grid: { drawOnChartArea: false }
           }
         }
       }
     });
-    // expose for quick debug if needed
     window.chart = chart;
 
     // Initial + periodic refresh (5m)
@@ -171,7 +159,6 @@ dew: {
     async function loadRange24h(){
       const end   = Date.now();
       const start = end - 24*60*60*1000;
-      // lock the x window so a few points always render clearly
       chart.options.scales.x.min = start;
       chart.options.scales.x.max = end;
 
@@ -187,7 +174,7 @@ dew: {
             const tsMs = toMs(rec.ts);
             const val  = Number(rec.val ?? rec[tag]);
             if (isFinite(tsMs) && isFinite(val) && tsMs >= start && tsMs <= end) {
-              series[tag].push({ x: tsMs, y: val }); // use epoch ms for x
+              series[tag].push({ x: tsMs, y: val });
             }
           }
         }
@@ -195,6 +182,63 @@ dew: {
       }
       chart.data.datasets.forEach(ds => ds.data = series[ds.label]);
       chart.update();
+    }
+
+    // ---- Download ALL streams as CSV ----
+    document.getElementById("dlcsv").onclick = downloadAllStreamsCSV;
+
+    async function downloadAllStreamsCSV(){
+      // rows keyed by timestamp (ms)
+      const rowsByTs = Object.create(null);
+
+      // fetch all tags (m5 subtree)
+      const snaps = await Promise.all(
+        TAGS.map(tag => get(ref(db, `/${deviceId}/streams/${tag}/m5`)).then(snap => ({ tag, snap })))
+      );
+
+      // recursive collector (schema-agnostic)
+      function collect(tag, node){
+        if (!node) return;
+        if (Array.isArray(node)) { node.forEach(n => collect(tag, n)); return; }
+        if (typeof node === "object"){
+          if ("ts" in node && ("val" in node || tag in node || "value" in node || "y" in node || "v" in node)){
+            const ts = toMs(node.ts);
+            const val = Number(node.val ?? node[tag] ?? node.value ?? node.y ?? node.v);
+            if (!Number.isFinite(ts) || !Number.isFinite(val)) return;
+            if (!rowsByTs[ts]) rowsByTs[ts] = { ts_ms: ts };
+            rowsByTs[ts][tag] = val;
+            return;
+          }
+          for (const child of Object.values(node)) collect(tag, child);
+        }
+      }
+
+      for (const {tag, snap} of snaps){
+        if (snap.exists()) collect(tag, snap.val());
+      }
+
+      const timestamps = Object.keys(rowsByTs).map(Number).sort((a,b)=>a-b);
+      if (timestamps.length === 0) { alert("No streams data to export."); return; }
+
+      const headers = ["ts_iso","ts_ms", ...TAGS];
+      const lines = [headers.join(",")];
+
+      for (const ts of timestamps){
+        const row = rowsByTs[ts];
+        const iso = new Date(ts).toISOString();
+        lines.push([iso, ts, ...TAGS.map(t => fmt(row[t]))].join(","));
+      }
+
+      const csv = lines.join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `heateddryer_streams_all_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+
+      function fmt(n){ return (n==null || !isFinite(n)) ? "" : Number(n.toFixed(3)); }
     }
 
     // helpers
