@@ -1,1 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Koner Heated Dryer — Live</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:24px}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:16px}
+    .card{border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+    .label{color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+    .value{font-size:28px;font-weight:700;margin-top:6px}
+    .ts{margin-top:12px;color:#9ca3af;font-size:12px}
+  </style>
+  <script type="module">
+    // same pattern you used before (modular SDK from gstatic)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // Fill from Project settings (these values correspond to your project)
+    const firebaseConfig = {
+      apiKey: "YOUR_WEB_API_KEY",
+      authDomain: "koner-dewpoint.firebaseapp.com",
+      databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "koner-dewpoint"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    const deviceId = "heateddryer";
+    const latestRef = ref(db, `/${deviceId}/latest`);
+
+    const ids = ["B1","B2","R1","R2","dew","seq"];
+    const el = Object.fromEntries(ids.map(id => [id, null]));
+    window.onload = () => {
+      document.body.insertAdjacentHTML("beforeend", `
+        <div class="grid">
+          ${[
+            ["Pressure A (B1)","B1"," bar"],
+            ["Pressure B (B2)","B2"," bar"],
+            ["Dew Point","dew"," °C dp"],
+            ["Temperature 1 (R1)","R1"," °C"],
+            ["Temperature 2 (R2)","R2"," °C"],
+            ["Sequence","seq",""]
+          ].map(([label,id])=>`
+            <div class="card"><div class="label">${label}</div><div id="${id}" class="value">—</div></div>
+          `).join("")}
+        </div>
+        <p class="ts" id="last">Last updated: —</p>
+      `);
+      ids.forEach(id => el[id] = document.getElementById(id));
+      refresh();
+      setInterval(refresh, 10000); // poll every 10 s
+    };
+
+    async function refresh(){
+      const snap = await get(latestRef);
+      if(!snap.exists()) return;
+      const v = snap.val();
+      set("B1", v.B1, " bar"); set("B2", v.B2, " bar");
+      set("R1", v.R1, " °C");  set("R2", v.R2, " °C");
+      set("dew", v.dew, " °C dp"); set("seq", v.seq ?? "—", "");
+      document.getElementById("last").textContent = "Last updated: " + (v.ts || "—");
+    }
+    function set(id, val, unit){
+      el[id].textContent = (val===undefined||val===null) ? "—" : `${val}${unit}`;
+    }
+  </script>
+</head>
+<body>
+  <h1>Koner Heated Dryer — Live</h1>
+</body>
+</html>
 
