@@ -1,75 +1,201 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Koner Heated Dryer — Live</title>
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:24px}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:16px}
-    .card{border:1px solid #e5e7eb;border-radius:12px;padding:16px}
-    .label{color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-    .value{font-size:28px;font-weight:700;margin-top:6px}
-    .ts{margin-top:12px;color:#9ca3af;font-size:12px}
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color:#111; background:#fff; }
+    h1 { margin: 0 0 16px; }
+    .grid { display: grid; grid-template-columns: repeat(3,minmax(220px,1fr)); gap: 16px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .label { color:#6b7280; font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+    .value { font-size:28px; font-weight:700; margin-top:6px; }
+    .ts    { margin-top:12px; color:#9ca3af; font-size:12px; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:16px 0; }
+    button, select { padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; background:#fff; cursor:pointer; }
+    button.active { background:#111; color:#fff; border-color:#111; }
+    canvas { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px; }
   </style>
+
+  <!-- Chart.js + date adapter for time axis -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+
+  <!-- Firebase (modular) -->
   <script type="module">
-    // same pattern you used before (modular SDK from gstatic)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    // Fill from Project settings (these values correspond to your project)
+    // ====== EDIT THESE VALUES (Project settings -> Web API key, etc.) ======
     const firebaseConfig = {
-      apiKey: "YOUR_WEB_API_KEY",
+      apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
       authDomain: "koner-dewpoint.firebaseapp.com",
       databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "koner-dewpoint"
     };
+    // ======================================================================
 
+    // Basic constants
+    const deviceId = "heateddryer";
+    const TAGS = ["B1","B2","R1","R2","dew"];
+    // Nice distinct colors
+    const COLORS = { B1:"#2563eb", B2:"#60a5fa", R1:"#16a34a", R2:"#22c55e", dew:"#ef4444" };
+
+    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const db  = getDatabase(app);
 
-    const deviceId = "heateddryer";
-    const latestRef = ref(db, `/${deviceId}/latest`);
+    // Build UI (tiles + controls + chart)
+    const root = document.body;
+    root.insertAdjacentHTML("beforeend", `
+      <h1>Heated Dryer — Live</h1>
+      <div class="grid">
+        <div class="card"><div class="label">Pressure A (B1)</div><div id="B1" class="value">—</div></div>
+        <div class="card"><div class="label">Pressure B (B2)</div><div id="B2" class="value">—</div></div>
+        <div class="card"><div class="label">Dew Point</div><div id="dew" class="value">—</div></div>
+        <div class="card"><div class="label">Temperature 1 (R1)</div><div id="R1" class="value">—</div></div>
+        <div class="card"><div class="label">Temperature 2 (R2)</div><div id="R2" class="value">—</div></div>
+        <div class="card"><div class="label">Sequence</div><div id="seq" class="value">—</div></div>
+      </div>
+      <p class="ts" id="last">Last updated: —</p>
 
-    const ids = ["B1","B2","R1","R2","dew","seq"];
-    const el = Object.fromEntries(ids.map(id => [id, null]));
-    window.onload = () => {
-      document.body.insertAdjacentHTML("beforeend", `
-        <div class="grid">
-          ${[
-            ["Pressure A (B1)","B1"," bar"],
-            ["Pressure B (B2)","B2"," bar"],
-            ["Dew Point","dew"," °C dp"],
-            ["Temperature 1 (R1)","R1"," °C"],
-            ["Temperature 2 (R2)","R2"," °C"],
-            ["Sequence","seq",""]
-          ].map(([label,id])=>`
-            <div class="card"><div class="label">${label}</div><div id="${id}" class="value">—</div></div>
-          `).join("")}
-        </div>
-        <p class="ts" id="last">Last updated: —</p>
-      `);
-      ids.forEach(id => el[id] = document.getElementById(id));
-      refresh();
-      setInterval(refresh, 10000); // poll every 10 s
-    };
+      <div class="controls">
+        <span class="label" style="color:#111;text-transform:none">Y‑Axis preset:</span>
+        <button id="yPressure">Pressure (0–16)</button>
+        <button id="yTemp">Temperature (0–200)</button>
+        <button id="yDew">Dew (−100..+20)</button>
+        <span class="label" style="color:#111;text-transform:none;margin-left:8px">Range:</span>
+        <select id="hours">
+          <option value="2">Last 2 h</option>
+          <option value="6" selected>Last 6 h</option>
+          <option value="24">Last 24 h</option>
+        </select>
+        <button id="reload">Reload</button>
+      </div>
 
-    async function refresh(){
-      const snap = await get(latestRef);
-      if(!snap.exists()) return;
+      <canvas id="trend" height="300"></canvas>
+    `);
+
+    // Latest tiles
+    const el = Object.fromEntries([...TAGS, "seq", "last"].map(id => [id, document.getElementById(id)]));
+    async function refreshLatest(){
+      const snap = await get(ref(db, `/${deviceId}/latest`));
+      if (!snap.exists()) return;
       const v = snap.val();
-      set("B1", v.B1, " bar"); set("B2", v.B2, " bar");
-      set("R1", v.R1, " °C");  set("R2", v.R2, " °C");
-      set("dew", v.dew, " °C dp"); set("seq", v.seq ?? "—", "");
-      document.getElementById("last").textContent = "Last updated: " + (v.ts || "—");
+      setVal("B1", v.B1, " bar");
+      setVal("B2", v.B2, " bar");
+      setVal("R1", v.R1, " °C");
+      setVal("R2", v.R2, " °C");
+      setVal("dew", v.dew, " °C dp");
+      setVal("seq", v.seq ?? "—", "");
+      el.last.textContent = "Last updated: " + (v.ts || "—");
     }
-    function set(id, val, unit){
-      el[id].textContent = (val===undefined||val===null) ? "—" : `${val}${unit}`;
+    function setVal(id, val, unit){
+      const n = (val===undefined || val===null) ? "—" : `${val}${unit}`;
+      el[id].textContent = n;
     }
+    refreshLatest();
+    // Poll latest a bit faster (if sequence changes mid-interval)
+    setInterval(refreshLatest, 15000);
+
+    // Chart.js setup
+    const ctx = document.getElementById("trend").getContext("2d");
+    const datasets = TAGS.map(t => ({
+      label: t, borderColor: COLORS[t], backgroundColor: COLORS[t],
+      data: [], borderWidth: 2, tension: .2, pointRadius: 0, yAxisID: "y"
+    }));
+    const chart = new Chart(ctx, {
+      type: "line",
+      data: { datasets },
+      options: {
+        parsing: false,
+        animation: false,
+        normalized: true,
+        scales: {
+          x: { type: "time", time: { unit: "minute" } },
+          y: { beginAtZero: false, suggestedMin: 0, suggestedMax: 16 } // default to Pressure preset
+        },
+        plugins: { legend: { display: true, position: "top" } }
+      }
+    });
+
+    // Y presets
+    const yBtns = {
+      pressure: document.getElementById("yPressure"),
+      temp:     document.getElementById("yTemp"),
+      dew:      document.getElementById("yDew")
+    };
+    function setActive(btn){
+      Object.values(yBtns).forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    }
+    function applyYPreset(kind){
+      if (kind==="pressure"){ chart.options.scales.y.min = 0; chart.options.scales.y.max = 16; setActive(yBtns.pressure); }
+      if (kind==="temp"){     chart.options.scales.y.min = 0; chart.options.scales.y.max = 200; setActive(yBtns.temp); }
+      if (kind==="dew"){      chart.options.scales.y.min = -100; chart.options.scales.y.max = 20; setActive(yBtns.dew); }
+      chart.update();
+    }
+    yBtns.pressure.onclick = ()=> applyYPreset("pressure");
+    yBtns.temp.onclick     = ()=> applyYPreset("temp");
+    yBtns.dew.onclick      = ()=> applyYPreset("dew");
+    applyYPreset("pressure"); // default
+
+    // Load m5 streams for a time range
+    document.getElementById("reload").onclick = ()=> loadRange(parseInt(document.getElementById("hours").value,10));
+    loadRange(parseInt(document.getElementById("hours").value,10));
+
+    // Also refresh chart every 5 minutes on the :00/:05/:10... boundary
+    setInterval(() => {
+      const m = new Date().getMinutes();
+      if ([0,5,10,15,20,25,30,35,40,45,50,55].includes(m) && new Date().getSeconds() < 5) {
+        loadRange(parseInt(document.getElementById("hours").value,10));
+      }
+    }, 4000);
+
+    async function loadRange(hours){
+      // time window (local time, Jakarta +07 shown in ts)
+      const end = new Date();
+      const start = new Date(end.getTime() - hours*60*60*1000);
+
+      // Build list of {Y,M,D} to fetch (today + possible previous days)
+      const days = uniqueDaysBetween(start, end);
+
+      // Fetch per tag, per day
+      const series = Object.fromEntries(TAGS.map(t => [t, []]));
+      for (const tag of TAGS) {
+        for (const [Y,M,D] of days) {
+          const daySnap = await get(ref(db, `/${deviceId}/streams/${tag}/m5/${Y}/${M}/${D}`));
+          if (!daySnap.exists()) continue;
+          const dayObj = daySnap.val(); // keys: HHmm -> { ts, <tag>: value }
+          for (const [hm, rec] of Object.entries(dayObj)) {
+            // Use ISO timestamp (already +07:00) as x
+            const ts = new Date(rec.ts);
+            if (ts >= start && ts <= end && rec[tag] !== undefined) {
+              series[tag].push({ x: ts, y: Number(rec[tag]) });
+            }
+          }
+        }
+        series[tag].sort((a,b)=>a.x - b.x);
+      }
+
+      // Apply to datasets
+      chart.data.datasets.forEach(ds => ds.data = series[ds.label]);
+      chart.update();
+    }
+
+    // Helpers
+    function uniqueDaysBetween(start, end){
+      const out = [];
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      while (d <= end) {
+        out.push([ String(d.getFullYear()), pad(d.getMonth()+1), pad(d.getDate()) ]);
+        d.setDate(d.getDate()+1);
+      }
+      return out;
+    }
+    function pad(n){ return String(n).padStart(2, "0"); }
   </script>
 </head>
-<body>
-  <h1>Koner Heated Dryer — Live</h1>
-</body>
+<body></body>
 </html>
-
