@@ -6,9 +6,11 @@
   <title>Koner Heated Dryer — Live</title>
   <style>
     :root {
-      --c-press: #2563eb; /* B1/B2 */
-      --c-temp:  #16a34a; /* R1/R2 */
-      --c-dew:   #ef4444; /* dew    */
+      --c-press: #2563eb;  /* B1/B2 */
+      --c-press2:#60a5fa;  /* B2 */
+      --c-temp:  #16a34a;  /* R1/R2 */
+      --c-temp2: #22c55e;  /* R2 */
+      --c-dew:   #ef4444;  /* dew   */
       --border:  #e5e7eb;
       --muted:   #6b7280;
     }
@@ -32,20 +34,20 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    // ---- Your Firebase config ----
+    // ---- Firebase config (yours) ----
     const firebaseConfig = {
       apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
       authDomain: "koner-dewpoint.firebaseapp.com",
       databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
       projectId: "koner-dewpoint"
     };
-    // --------------------------------
+    // ----------------------------------
 
     // Constants
     const deviceId = "heateddryer";
-    const TAGS = ["B1","B2","R1","R2","dew"];
+    const TAGS   = ["B1","B2","R1","R2","dew"];
     const COLORS = { B1:"#2563eb", B2:"#60a5fa", R1:"#16a34a", R2:"#22c55e", dew:"#ef4444" };
-    const TAG_AXIS = { B1:"pressure", B2:"pressure", R1:"temp", R2:"temp", dew:"dew" }; // map series -> axis
+    const TAG_AXIS = { B1:"pressure", B2:"pressure", R1:"temp", R2:"temp", dew:"dew" };
 
     // Init
     const app = initializeApp(firebaseConfig);
@@ -65,34 +67,25 @@
       </div>
       <p class="ts" id="last">Last updated: —</p>
 
-      <div class="chart-wrap">
-        <canvas id="trend"></canvas>
-      </div>
+      <div class="chart-wrap"><canvas id="trend"></canvas></div>
     `);
 
-    // ===== Latest tiles =====
+    // ========== Latest tiles ==========
     const el = Object.fromEntries([...TAGS, "seq", "last"].map(id => [id, document.getElementById(id)]));
-    function fmtTs(ts){ try{ return new Date(ts).toLocaleString(); } catch { return String(ts); } }
     function setVal(id, val, unit){ el[id].textContent = (val==null || !isFinite(Number(val))) ? "—" : `${val}${unit}`; }
-
     async function refreshLatest(){
       const snap = await get(ref(db, `/${deviceId}/latest`));
       if (!snap.exists()) return;
       const v = snap.val();
-      setVal("B1", v.B1, " bar");
-      setVal("B2", v.B2, " bar");
-      setVal("R1", v.R1, " °C");
-      setVal("R2", v.R2, " °C");
-      setVal("dew", v.dew, " °C dp");
-      setVal("seq", v.seq ?? "—", "");
-      el.last.textContent = "Last updated: " + (v.ts ? fmtTs(v.ts) : "—");
+      setVal("B1", v.B1, " bar"); setVal("B2", v.B2, " bar");
+      setVal("R1", v.R1, " °C");  setVal("R2", v.R2, " °C");
+      setVal("dew", v.dew, " °C dp"); setVal("seq", v.seq ?? "—", "");
+      const ts = toMs(v.ts); el.last.textContent = "Last updated: " + (ts ? new Date(ts).toLocaleString() : "—");
     }
-    refreshLatest();
-    setInterval(refreshLatest, 15000);
+    refreshLatest(); setInterval(refreshLatest, 15000);
 
-    // ===== Streams chart (3 Y-axes, 24h only) =====
+    // ========== Chart (3 Y-axes, 24h window) ==========
     const ctx = document.getElementById("trend").getContext("2d");
-
     const datasets = TAGS.map(t => ({
       label: t,
       borderColor: COLORS[t],
@@ -100,7 +93,9 @@
       data: [],
       borderWidth: 2,
       tension: .2,
-      pointRadius: 0,
+      // show a dot when only 1 point exists
+      pointRadius: ctx => (ctx.dataset.data && ctx.dataset.data.length < 2 ? 3 : 0),
+      pointHoverRadius: 4,
       yAxisID: TAG_AXIS[t]
     }));
 
@@ -111,40 +106,49 @@
         parsing: false,
         animation: false,
         normalized: true,
-        maintainAspectRatio: false,              // <- respect the 420px container
+        maintainAspectRatio: false, // respect 420px container
         interaction: { mode: "nearest", intersect: false },
-        plugins: { legend: { display: false } }, // <- no legend/toggles
+        plugins: {
+          // Legend visible but non-clickable
+          legend: {
+            display: true,
+            position: "top",
+            onClick: () => {} // disable toggle
+          },
+          decimation: { enabled: true, algorithm: "lttb" }
+        },
         scales: {
           x: { type: "time", time: { unit: "minute" } },
-          y: { display: false },                 // dummy (kept for backward-compat)
+          y: { display: false }, // dummy
 
-          // three Y axes on the LEFT (overlapped)
           pressure: {
             type: "linear", position: "left", offset: true,
             suggestedMin: 0, suggestedMax: 16,
             title: { display: true, text: "Pressure (bar)" },
-            ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--c-press').trim() || "#2563eb" },
-            grid: { color: "rgba(0,0,0,0.06)" } // only pressure draws grid
+            ticks: { color: "#2563eb" },
+            grid: { color: "rgba(0,0,0,0.06)" }
           },
           temp: {
             type: "linear", position: "left", offset: true,
             suggestedMin: 0, suggestedMax: 200,
             title: { display: true, text: "Temperature (°C)" },
-            ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--c-temp').trim() || "#16a34a" },
+            ticks: { color: "#16a34a" },
             grid: { drawOnChartArea: false }
           },
           dew: {
             type: "linear", position: "left", offset: true,
             suggestedMin: -100, suggestedMax: 20,
             title: { display: true, text: "Dew Point (°C)" },
-            ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--c-dew').trim() || "#ef4444" },
+            ticks: { color: "#ef4444" },
             grid: { drawOnChartArea: false }
           }
         }
       }
     });
+    // expose for quick debug if needed
+    window.chart = chart;
 
-    // initial + periodic refresh (every ~5m at boundary)
+    // Initial + periodic refresh (5m)
     await loadRange24h();
     setInterval(() => {
       const m = new Date().getMinutes();
@@ -152,12 +156,16 @@
         loadRange24h();
       }
     }, 4000);
+    window.loadRange24h = loadRange24h;
 
     async function loadRange24h(){
-      const end = new Date();
-      const start = new Date(end.getTime() - 24*60*60*1000);
-      const days = daysBetween(start, end);
+      const end   = Date.now();
+      const start = end - 24*60*60*1000;
+      // lock the x window so a few points always render clearly
+      chart.options.scales.x.min = start;
+      chart.options.scales.x.max = end;
 
+      const days = daysBetween(new Date(start), new Date(end));
       const series = Object.fromEntries(TAGS.map(t => [t, []]));
 
       for (const tag of TAGS) {
@@ -165,20 +173,16 @@
           const p = `/${deviceId}/streams/${tag}/m5/${Y}/${M}/${D}`;
           const daySnap = await get(ref(db, p));
           if (!daySnap.exists()) continue;
-
-          const obj = daySnap.val(); // keys: HHmm
-          for (const rec of Object.values(obj)) {
-            const ts = parseTs(rec.ts);
-            const raw = (rec[tag] ?? rec.val ?? rec.value ?? rec.y ?? rec.v);
-            const num = Number(raw);
-            if (ts && isFinite(num) && ts >= start && ts <= end) {
-              series[tag].push({ x: ts, y: num });
+          for (const rec of Object.values(daySnap.val())) {
+            const tsMs = toMs(rec.ts);
+            const val  = Number(rec.val ?? rec[tag]);
+            if (isFinite(tsMs) && isFinite(val) && tsMs >= start && tsMs <= end) {
+              series[tag].push({ x: tsMs, y: val }); // use epoch ms for x
             }
           }
         }
         series[tag].sort((a,b)=>a.x - b.x);
       }
-
       chart.data.datasets.forEach(ds => ds.data = series[ds.label]);
       chart.update();
     }
@@ -193,12 +197,12 @@
       }
       return out;
     }
-    function pad(n){ return String(n).padStart(2, "0"); }
-    function parseTs(ts){
-      if (!ts) return null;
-      if (typeof ts === "number") return new Date(ts < 2e10 ? ts*1000 : ts);
-      if (typeof ts === "string") return new Date(ts);
-      return null;
+    function pad(n){ return String(n).padStart(2,"0"); }
+    function toMs(ts){
+      if (ts == null) return NaN;
+      if (typeof ts === "number") return ts < 2e10 ? ts*1000 : ts; // seconds → ms
+      if (typeof ts === "string") return new Date(ts).getTime();
+      return NaN;
     }
   </script>
 </head>
