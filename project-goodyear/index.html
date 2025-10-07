@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ON/OFF Event Logger — Live</title>
+  <title>PROJECT GOODYEAR – Gripper Cutter</title>
   <style>
     :root { --border:#e5e7eb; --muted:#6b7280; }
     * { box-sizing: border-box; }
@@ -31,10 +31,10 @@
   <!-- Firebase (modular SDK) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, get, child, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // --- 🔧 Firebase config (ISI DENGAN punyamu) ---
+    // --- 🔧 Firebase config (punyamu) ---
     const firebaseConfig = {
       apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
       authDomain: "koner-dewpoint.firebaseapp.com",
@@ -43,9 +43,8 @@
     };
 
     // --- 🌡️ Konfigurasi data ---
-    const ROOT   = "/onoff";              // base path sesuai project kamu              // akar RTDB untuk project ini
-    const DEVICE = "default";             // kalau mau multi device, ganti di sketch + sini
-    const CH_LABEL = ["CH0","CH1","CH2","CH3"]; // label UI
+    const ROOT   = "/onoff";
+    const CH_LABEL = ["Gripping","Cutting","Ballup","Fault"]; // 0..3
 
     // ===== Init Firebase =====
     const app = initializeApp(firebaseConfig);
@@ -55,22 +54,24 @@
     // ====== UI skeleton ======
     const root = document.body;
     root.insertAdjacentHTML("beforeend", `
-      <h1>ON/OFF Event Logger — Live</h1>
-      <div class="sub">Sumber: Firebase RTDB (${ROOT}) • Device: <b id="dev">${DEVICE}</b> • <span id="last" class="muted">Last fetch: —</span></div>
+      <h1 id="title">PROJECT GOODYEAR – Gripper Cutter</h1>
+      <div class="sub">Last fetch: <span id="last" class="muted">—</span></div>
 
       <div class="row">
+        <!-- COUNTERS (TODAY) -->
         <div class="card" style="flex:1 1 420px">
-          <div class="label">Counters (Today)</div>
+          <div class="label">COUNTERS (TODAY)</div>
           <div class="grid4" style="margin-top:6px">
             <div><div class="muted">${CH_LABEL[0]}</div><div id="c0" class="value">0</div></div>
             <div><div class="muted">${CH_LABEL[1]}</div><div id="c1" class="value">0</div></div>
             <div><div class="muted">${CH_LABEL[2]}</div><div id="c2" class="value">0</div></div>
             <div><div class="muted">${CH_LABEL[3]}</div><div id="c3" class="value">0</div></div>
           </div>
-          <div class="muted" style="margin-top:8px">Total: <b id="ctot">0</b></div>
         </div>
+
+        <!-- CONTROLS -->
         <div class="card" style="flex:1 1 300px">
-          <div class="label">Controls</div>
+          <div class="label">CONTROLS</div>
           <div class="controls" style="margin-top:8px">
             <input type="date" id="datepick" />
             <button id="refresh">Refresh</button>
@@ -80,8 +81,20 @@
         </div>
       </div>
 
+      <!-- COUNTERS (ALL) -->
+      <section class="card" id="counters-all" style="margin-top:14px">
+        <div class="label">COUNTERS (ALL)</div>
+        <div class="grid4" id="allCounters" style="margin-top:6px">
+          <div><div class="muted">${CH_LABEL[0]}</div><div id="a0" class="value">0</div></div>
+          <div><div class="muted">${CH_LABEL[1]}</div><div id="a1" class="value">0</div></div>
+          <div><div class="muted">${CH_LABEL[2]}</div><div id="a2" class="value">0</div></div>
+          <div><div class="muted">${CH_LABEL[3]}</div><div id="a3" class="value">0</div></div>
+        </div>
+      </section>
+
+      <!-- EVENT FEED -->
       <div class="card" style="margin-top:14px">
-        <div class="label">Event Feed</div>
+        <div class="label">EVENT FEED</div>
         <div class="feed" style="margin-top:8px">
           <table id="feed">
             <thead><tr><th style="width:180px">Time</th><th>Channel</th></tr></thead>
@@ -97,7 +110,10 @@
       c1: document.getElementById("c1"),
       c2: document.getElementById("c2"),
       c3: document.getElementById("c3"),
-      ctot: document.getElementById("ctot"),
+      a0: document.getElementById("a0"),
+      a1: document.getElementById("a1"),
+      a2: document.getElementById("a2"),
+      a3: document.getElementById("a3"),
       date: document.getElementById("datepick"),
       refresh: document.getElementById("refresh"),
       dlcsv: document.getElementById("dlcsv"),
@@ -112,11 +128,13 @@
     let currentRows = []; // cache rows for CSV
 
     // ===== Auth anon, then initial load =====
-    onAuthStateChanged(auth, (u) => {
-      if (u) loadDay(el.date.value); else signInAnonymously(auth);
+    onAuthStateChanged(auth, async (u) => {
+      if (!u) { await signInAnonymously(auth); return; }
+      await loadDay(el.date.value);
+      await refreshAllCounters();     // compute ALL after first load
     });
 
-    // ====== Loader ======
+    // ====== Load one day (SDK) ======
     async function loadDay(dateStr){
       if (!dateStr) return;
       const d = new Date(dateStr + "T00:00:00");
@@ -127,13 +145,13 @@
       const dayRef = ref(db, `${ROOT}/events/${Y}/${M}/${D}`);
       const snap = await get(dayRef);
 
-      const rows = []; // {ts, ch}
+      const rows = []; // {ts, ch, name?}
       if (snap.exists()) collectEvents(snap.val(), rows);
 
       rows.sort((a,b)=>a.ts - b.ts);
       currentRows = rows;
-      render(rows);
-      el.last.textContent = `Last fetch: ${new Date().toLocaleString()}`;
+      renderToday(rows);
+      el.last.textContent = new Date().toLocaleString();
     }
 
     function collectEvents(node, out){
@@ -145,22 +163,22 @@
         if (typeof v === 'object' && 'ts' in v && 'ch' in v){
           const ts = toMs(v.ts);
           const ch = Number(v.ch);
-          if (Number.isFinite(ts) && ch>=0 && ch<4) out.push({ ts, ch });
+          const name = typeof v.name === 'string' ? v.name : undefined;
+          if (Number.isFinite(ts) && ch>=0 && ch<4) out.push({ ts, ch, name });
         } else if (typeof v === 'object') {
-          collectEvents(v, out); // dive deeper (covers HHmm → pushId)
+          collectEvents(v, out); // dive deeper (HHmm → pushId)
         }
       }
     }
 
-    function render(rows){
-      // counters
+    function renderToday(rows){
+      // counters (today)
       const cnt = [0,0,0,0];
       for (const r of rows) if (r.ch>=0 && r.ch<4) cnt[r.ch]++;
       el.c0.textContent = cnt[0];
       el.c1.textContent = cnt[1];
       el.c2.textContent = cnt[2];
       el.c3.textContent = cnt[3];
-      el.ctot.textContent = cnt.reduce((a,b)=>a+b,0);
 
       // table
       const frag = document.createDocumentFragment();
@@ -170,7 +188,8 @@
         const td1 = document.createElement('td');
         const td2 = document.createElement('td');
         td1.textContent = new Date(r.ts).toLocaleString();
-        td2.innerHTML = `<span class="dot ch${r.ch}"></span>${CH_LABEL[r.ch]} (0→1)`;
+        const label = r.name || CH_LABEL[r.ch] || `CH${r.ch}`;
+        td2.innerHTML = `<span class="dot ch${r.ch}"></span>${label} (0→1)`;
         tr.appendChild(td1); tr.appendChild(td2);
         frag.appendChild(tr);
       }
@@ -178,27 +197,63 @@
       el.feedBody.appendChild(frag);
     }
 
-    function downloadCSV(rows){
-      if (!rows || rows.length===0) { alert('No events to export.'); return; }
-      const lines = ['ts_iso,ts_ms,channel'];
-      for (const r of rows){
-        lines.push(`${new Date(r.ts).toISOString()},${r.ts},${CH_LABEL[r.ch]}`);
+    // ====== COUNTERS (ALL) ======
+    async function refreshAllCounters(){
+      // Traverse whole /onoff/events tree (year→month→day→hhmm)
+      const counts = [0,0,0,0];
+
+      // Use REST shallow with auth token (more efficient)
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
+
+      const years = await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
+      if (!years) return renderAllCounts(counts);
+
+      for (const y of Object.keys(years)){
+        const months = await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`);
+        for (const m of Object.keys(months)){
+          const days = await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`);
+          for (const d of Object.keys(days)){
+            const hhmm = await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`);
+            for (const h of Object.keys(hhmm)){
+              const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`);
+              if (!minuteNode) continue;
+              for (const k of Object.keys(minuteNode)){
+                const e = minuteNode[k];
+                if (typeof e?.ch === 'number' && e.ch >=0 && e.ch < 4){
+                  counts[e.ch] += 1;
+                }
+              }
+            }
+          }
+        }
       }
-      const csv = lines.join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url  = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `events_${el.date.value}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      renderAllCounts(counts);
+    }
+
+    function renderAllCounts(counts){
+      el.a0.textContent = counts[0];
+      el.a1.textContent = counts[1];
+      el.a2.textContent = counts[2];
+      el.a3.textContent = counts[3];
+    }
+
+    // --- helpers (REST) ---
+    async function jget(url){
+      const r = await fetch(url);
+      if(!r.ok) return null;
+      return r.json();
     }
 
     // helpers
     function pad(n){ return String(n).padStart(2,'0'); }
-    function toMs(ts){ if (ts==null) return NaN; if (typeof ts==='number') return ts<2e10? ts*1000:ts; if (typeof ts==='string') return new Date(ts).getTime(); return NaN; }
+    function toMs(ts){
+      if (ts==null) return NaN;
+      if (typeof ts==='number') return ts<2e10? ts*1000:ts;
+      if (typeof ts==='string') return new Date(ts).getTime();
+      return NaN;
+    }
   </script>
 </head>
 <body></body>
 </html>
-
