@@ -1,1 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ON/OFF Event Logger — Live</title>
+  <style>
+    :root { --border:#e5e7eb; --muted:#6b7280; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color:#0f172a; background:#fff; }
+    h1 { margin:0 0 14px; font-size:28px; }
+    .sub { color: var(--muted); margin-bottom: 16px; }
+    .row { display:flex; gap:16px; flex-wrap:wrap; }
+    .card { border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); background:#fff; }
+    .grid4 { display:grid; grid-template-columns: repeat(4,minmax(160px,1fr)); gap:12px; }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
+    .value { font-size:26px; font-weight:700; margin-top:4px; }
+    .muted { color: var(--muted); font-size:12px; }
+    .controls { display:flex; gap:8px; align-items:center; }
+    select, button, input[type="date"] { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; font: inherit; }
+    button { cursor:pointer; }
+    button:hover { background:#f8fafc; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; font-size:14px; }
+    th { background:#f9fafb; color:#111827; position:sticky; top:0; }
+    .feed { max-height: 420px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:999px; margin-right:6px; }
+    .ch0{ background:#ef4444 } .ch1{ background:#f59e0b } .ch2{ background:#16a34a } .ch3{ background:#3b82f6 }
+  </style>
+
+  <!-- Firebase (modular SDK) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, child, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // --- 🔧 Firebase config (ISI DENGAN punyamu) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
+      authDomain: "koner-dewpoint.firebaseapp.com",
+      databaseURL: "https://koner-dewpoint-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "koner-dewpoint"
+    };
+
+    // --- 🌡️ Konfigurasi data ---
+    const ROOT   = "/onoff";              // base path sesuai project kamu              // akar RTDB untuk project ini
+    const DEVICE = "default";             // kalau mau multi device, ganti di sketch + sini
+    const CH_LABEL = ["CH0","CH1","CH2","CH3"]; // label UI
+
+    // ===== Init Firebase =====
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+    const auth = getAuth(app);
+
+    // ====== UI skeleton ======
+    const root = document.body;
+    root.insertAdjacentHTML("beforeend", `
+      <h1>ON/OFF Event Logger — Live</h1>
+      <div class="sub">Sumber: Firebase RTDB (${ROOT}) • Device: <b id="dev">${DEVICE}</b> • <span id="last" class="muted">Last fetch: —</span></div>
+
+      <div class="row">
+        <div class="card" style="flex:1 1 420px">
+          <div class="label">Counters (Today)</div>
+          <div class="grid4" style="margin-top:6px">
+            <div><div class="muted">${CH_LABEL[0]}</div><div id="c0" class="value">0</div></div>
+            <div><div class="muted">${CH_LABEL[1]}</div><div id="c1" class="value">0</div></div>
+            <div><div class="muted">${CH_LABEL[2]}</div><div id="c2" class="value">0</div></div>
+            <div><div class="muted">${CH_LABEL[3]}</div><div id="c3" class="value">0</div></div>
+          </div>
+          <div class="muted" style="margin-top:8px">Total: <b id="ctot">0</b></div>
+        </div>
+        <div class="card" style="flex:1 1 300px">
+          <div class="label">Controls</div>
+          <div class="controls" style="margin-top:8px">
+            <input type="date" id="datepick" />
+            <button id="refresh">Refresh</button>
+            <button id="dlcsv">Download CSV</button>
+          </div>
+          <div class="muted" style="margin-top:8px">Menampilkan daftar <b>event 0→1</b> (rising edge) untuk tanggal terpilih.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="label">Event Feed</div>
+        <div class="feed" style="margin-top:8px">
+          <table id="feed">
+            <thead><tr><th style="width:180px">Time</th><th>Channel</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    `);
+
+    const el = {
+      last: document.getElementById("last"),
+      c0: document.getElementById("c0"),
+      c1: document.getElementById("c1"),
+      c2: document.getElementById("c2"),
+      c3: document.getElementById("c3"),
+      ctot: document.getElementById("ctot"),
+      date: document.getElementById("datepick"),
+      refresh: document.getElementById("refresh"),
+      dlcsv: document.getElementById("dlcsv"),
+      feedBody: document.querySelector("#feed tbody")
+    };
+
+    // default date = today (local)
+    el.date.valueAsDate = new Date();
+    el.refresh.onclick = () => loadDay(el.date.value);
+    el.dlcsv.onclick = () => downloadCSV(currentRows);
+
+    let currentRows = []; // cache rows for CSV
+
+    // ===== Auth anon, then initial load =====
+    onAuthStateChanged(auth, (u) => {
+      if (u) loadDay(el.date.value); else signInAnonymously(auth);
+    });
+
+    // ====== Loader ======
+    async function loadDay(dateStr){
+      if (!dateStr) return;
+      const d = new Date(dateStr + "T00:00:00");
+      const Y = d.getFullYear().toString();
+      const M = pad(d.getMonth()+1);
+      const D = pad(d.getDate());
+
+      const dayRef = ref(db, `${ROOT}/events/${Y}/${M}/${D}`);
+      const snap = await get(dayRef);
+
+      const rows = []; // {ts, ch}
+      if (snap.exists()) collectEvents(snap.val(), rows);
+
+      rows.sort((a,b)=>a.ts - b.ts);
+      currentRows = rows;
+      render(rows);
+      el.last.textContent = `Last fetch: ${new Date().toLocaleString()}`;
+    }
+
+    function collectEvents(node, out){
+      if (!node) return;
+      if (typeof node !== 'object') return;
+      for (const k in node){
+        const v = node[k];
+        if (!v) continue;
+        if (typeof v === 'object' && 'ts' in v && 'ch' in v){
+          const ts = toMs(v.ts);
+          const ch = Number(v.ch);
+          if (Number.isFinite(ts) && ch>=0 && ch<4) out.push({ ts, ch });
+        } else if (typeof v === 'object') {
+          collectEvents(v, out); // dive deeper (covers HHmm → pushId)
+        }
+      }
+    }
+
+    function render(rows){
+      // counters
+      const cnt = [0,0,0,0];
+      for (const r of rows) if (r.ch>=0 && r.ch<4) cnt[r.ch]++;
+      el.c0.textContent = cnt[0];
+      el.c1.textContent = cnt[1];
+      el.c2.textContent = cnt[2];
+      el.c3.textContent = cnt[3];
+      el.ctot.textContent = cnt.reduce((a,b)=>a+b,0);
+
+      // table
+      const frag = document.createDocumentFragment();
+      for (let i = rows.length-1; i >= 0; i--) { // newest first
+        const r = rows[i];
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td');
+        const td2 = document.createElement('td');
+        td1.textContent = new Date(r.ts).toLocaleString();
+        td2.innerHTML = `<span class="dot ch${r.ch}"></span>${CH_LABEL[r.ch]} (0→1)`;
+        tr.appendChild(td1); tr.appendChild(td2);
+        frag.appendChild(tr);
+      }
+      el.feedBody.innerHTML = "";
+      el.feedBody.appendChild(frag);
+    }
+
+    function downloadCSV(rows){
+      if (!rows || rows.length===0) { alert('No events to export.'); return; }
+      const lines = ['ts_iso,ts_ms,channel'];
+      for (const r of rows){
+        lines.push(`${new Date(r.ts).toISOString()},${r.ts},${CH_LABEL[r.ch]}`);
+      }
+      const csv = lines.join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `events_${el.date.value}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    // helpers
+    function pad(n){ return String(n).padStart(2,'0'); }
+    function toMs(ts){ if (ts==null) return NaN; if (typeof ts==='number') return ts<2e10? ts*1000:ts; if (typeof ts==='string') return new Date(ts).getTime(); return NaN; }
+  </script>
+</head>
+<body></body>
+</html>
 
