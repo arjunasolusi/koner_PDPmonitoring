@@ -5,27 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PROJECT GOODYEAR – Gripper Cutter</title>
   <style>
-    :root { --border:#e5e7eb; --muted:#6b7280; }
-    * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; color:#0f172a; background:#fff; }
-    h1 { margin:0 0 14px; font-size:28px; }
-    .sub { color: var(--muted); margin-bottom: 16px; }
-    .row { display:flex; gap:16px; flex-wrap:wrap; }
-    .card { border:1px solid var(--border); border-radius:12px; padding:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); background:#fff; }
-    .grid4 { display:grid; grid-template-columns: repeat(4,minmax(160px,1fr)); gap:12px; }
-    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
-    .value { font-size:26px; font-weight:700; margin-top:4px; }
-    .muted { color: var(--muted); font-size:12px; }
-    .controls { display:flex; gap:8px; align-items:center; }
-    select, button, input[type="date"] { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; font: inherit; }
-    button { cursor:pointer; }
-    button:hover { background:#f8fafc; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; font-size:14px; }
-    th { background:#f9fafb; color:#111827; position:sticky; top:0; }
-    .feed { max-height: 420px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
-    .dot { display:inline-block; width:10px; height:10px; border-radius:999px; margin-right:6px; }
-    .ch0{ background:#ef4444 } .ch1{ background:#f59e0b } .ch2{ background:#16a34a } .ch3{ background:#3b82f6 }
+    :root{--border:#e5e7eb;--muted:#6b7280;--fg:#0f172a;--bg:#fff;}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    h1{margin:24px 0 8px;font-size:28px}
+    .h6{margin:0 0 12px;font-size:12px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
+    .sub{margin:0 24px;color:var(--muted)}
+    .container{max-width:1160px;margin:0 auto;padding:0 16px 32px}
+    .card{border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
+    .grid{display:grid;gap:12px}
+    .counters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+    .kpi{border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px;background:#fff}
+    .kpi .label{color:var(--muted);font-size:12px;text-transform:none;letter-spacing:0}
+    .kpi .value{font-size:28px;font-weight:700;line-height:1;margin-top:2px}
+    .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+    .controls input[type="date"],.controls button{height:36px;border:1px solid var(--border);border-radius:8px;padding:0 12px;background:#fff;font:inherit;cursor:pointer}
+    .controls button:hover{background:#f8fafc}
+    .help{margin-top:6px;color:var(--muted);font-size:12px}
+    .table-wrap{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+    table{width:100%;border-collapse:collapse;min-width:420px}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+    thead th{background:#fafafa;position:sticky;top:0}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:6px}
+    .ch0{background:#ef4444}.ch1{background:#f59e0b}.ch2{background:#16a34a}.ch3{background:#3b82f6}
+    @media (max-width:480px){.kpi .value{font-size:24px}}
   </style>
 
   <!-- Firebase (modular SDK) -->
@@ -34,7 +38,7 @@
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // --- 🔧 Firebase config (punyamu) ---
+    // --- Firebase config ---
     const firebaseConfig = {
       apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
       authDomain: "koner-dewpoint.firebaseapp.com",
@@ -42,67 +46,67 @@
       projectId: "koner-dewpoint"
     };
 
-    // --- 🌡️ Konfigurasi data ---
-    const ROOT   = "/onoff";
+    // --- App constants ---
+    const ROOT = "/onoff";
     const CH_LABEL = ["Gripping","Cutting","Ballup","Fault"]; // 0..3
 
-    // ===== Init Firebase =====
+    // ===== Init =====
     const app = initializeApp(firebaseConfig);
     const db  = getDatabase(app);
     const auth = getAuth(app);
 
-    // ====== UI skeleton ======
-    const root = document.body;
-    root.insertAdjacentHTML("beforeend", `
-      <h1 id="title">PROJECT GOODYEAR – Gripper Cutter</h1>
-      <div class="sub">Last fetch: <span id="last" class="muted">—</span></div>
+    // ====== Static HTML ======
+    document.body.innerHTML = `
+      <div class="container">
+        <h1>PROJECT GOODYEAR – Gripper Cutter</h1>
+        <p class="sub">Last fetch: <span id="last">—</span></p>
 
-      <div class="row">
         <!-- COUNTERS (TODAY) -->
-        <div class="card" style="flex:1 1 420px">
-          <div class="label">COUNTERS (TODAY)</div>
-          <div class="grid4" style="margin-top:6px">
-            <div><div class="muted">${CH_LABEL[0]}</div><div id="c0" class="value">0</div></div>
-            <div><div class="muted">${CH_LABEL[1]}</div><div id="c1" class="value">0</div></div>
-            <div><div class="muted">${CH_LABEL[2]}</div><div id="c2" class="value">0</div></div>
-            <div><div class="muted">${CH_LABEL[3]}</div><div id="c3" class="value">0</div></div>
+        <section class="card">
+          <h2 class="h6">COUNTERS (TODAY)</h2>
+          <div class="grid counters">
+            <div class="kpi"><div class="label">${CH_LABEL[0]}</div><div id="c0" class="value">0</div></div>
+            <div class="kpi"><div class="label">${CH_LABEL[1]}</div><div id="c1" class="value">0</div></div>
+            <div class="kpi"><div class="label">${CH_LABEL[2]}</div><div id="c2" class="value">0</div></div>
+            <div class="kpi"><div class="label">${CH_LABEL[3]}</div><div id="c3" class="value">0</div></div>
           </div>
-        </div>
+        </section>
+
+        <!-- COUNTERS (ALL) -->
+        <section class="card">
+          <h2 class="h6">COUNTERS (ALL)</h2>
+          <div class="grid counters">
+            <div class="kpi"><div class="label">${CH_LABEL[0]}</div><div id="a0" class="value">0</div></div>
+            <div class="kpi"><div class="label">${CH_LABEL[1]}</div><div id="a1" class="value">0</div></div>
+            <div class="kpi"><div class="label">${CH_LABEL[2]}</div><div id="a2" class="value">0</div></div>
+            <div class="kpi"><div class="label">${CH_LABEL[3]}</div><div id="a3" class="value">0</div></div>
+          </div>
+        </section>
 
         <!-- CONTROLS -->
-        <div class="card" style="flex:1 1 300px">
-          <div class="label">CONTROLS</div>
-          <div class="controls" style="margin-top:8px">
+        <section class="card">
+          <h2 class="h6">CONTROLS</h2>
+          <div class="controls">
             <input type="date" id="datepick" />
             <button id="refresh">Refresh</button>
-            <button id="dlcsv">Download CSV</button>
+            <button id="dlDay">Download CSV (Day)</button>
+            <button id="dlAll">Download CSV (All)</button>
           </div>
-          <div class="muted" style="margin-top:8px">Menampilkan daftar <b>event 0→1</b> (rising edge) untuk tanggal terpilih.</div>
-        </div>
-      </div>
+          <p class="help">Menampilkan daftar <b>event 0→1</b> (rising edge) untuk tanggal terpilih.</p>
+        </section>
 
-      <!-- COUNTERS (ALL) -->
-      <section class="card" id="counters-all" style="margin-top:14px">
-        <div class="label">COUNTERS (ALL)</div>
-        <div class="grid4" id="allCounters" style="margin-top:6px">
-          <div><div class="muted">${CH_LABEL[0]}</div><div id="a0" class="value">0</div></div>
-          <div><div class="muted">${CH_LABEL[1]}</div><div id="a1" class="value">0</div></div>
-          <div><div class="muted">${CH_LABEL[2]}</div><div id="a2" class="value">0</div></div>
-          <div><div class="muted">${CH_LABEL[3]}</div><div id="a3" class="value">0</div></div>
-        </div>
-      </section>
-
-      <!-- EVENT FEED -->
-      <div class="card" style="margin-top:14px">
-        <div class="label">EVENT FEED</div>
-        <div class="feed" style="margin-top:8px">
-          <table id="feed">
-            <thead><tr><th style="width:180px">Time</th><th>Channel</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <!-- EVENT FEED -->
+        <section class="card">
+          <h2 class="h6">EVENT FEED</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th style="width:180px">Time</th><th>Channel</th></tr></thead>
+              <tbody id="feed"></tbody>
+            </table>
+          </div>
+        </section>
       </div>
-    `);
+    `;
 
     const el = {
       last: document.getElementById("last"),
@@ -116,47 +120,48 @@
       a3: document.getElementById("a3"),
       date: document.getElementById("datepick"),
       refresh: document.getElementById("refresh"),
-      dlcsv: document.getElementById("dlcsv"),
-      feedBody: document.querySelector("#feed tbody")
+      dlDay: document.getElementById("dlDay"),
+      dlAll: document.getElementById("dlAll"),
+      feedBody: document.getElementById("feed")
     };
 
     // default date = today (local)
     el.date.valueAsDate = new Date();
+
+    let currentRows = []; // cache rows for day table
+
     el.refresh.onclick = () => loadDay(el.date.value);
-    el.dlcsv.onclick = () => downloadCSV(currentRows);
+    el.dlDay.onclick = () => downloadCsv(currentRows, `events_${el.date.value}.csv`);
+    el.dlAll.onclick = () => downloadAllCsv();
 
-    let currentRows = []; // cache rows for CSV
-
-    // ===== Auth anon, then initial load =====
+    // ===== Auth & initial load =====
     onAuthStateChanged(auth, async (u) => {
       if (!u) { await signInAnonymously(auth); return; }
       await loadDay(el.date.value);
-      await refreshAllCounters();     // compute ALL after first load
+      await refreshAllCounters();
     });
 
-    // ====== Load one day (SDK) ======
+    // ===== Load one day =====
     async function loadDay(dateStr){
       if (!dateStr) return;
       const d = new Date(dateStr + "T00:00:00");
       const Y = d.getFullYear().toString();
       const M = pad(d.getMonth()+1);
       const D = pad(d.getDate());
-
       const dayRef = ref(db, `${ROOT}/events/${Y}/${M}/${D}`);
       const snap = await get(dayRef);
 
-      const rows = []; // {ts, ch, name?}
+      const rows = [];
       if (snap.exists()) collectEvents(snap.val(), rows);
-
-      rows.sort((a,b)=>a.ts - b.ts);
+      rows.sort((a,b)=>a.ts-b.ts);
       currentRows = rows;
       renderToday(rows);
       el.last.textContent = new Date().toLocaleString();
     }
 
+    // recursively collect {ts,ch,name}
     function collectEvents(node, out){
-      if (!node) return;
-      if (typeof node !== 'object') return;
+      if (!node || typeof node !== 'object') return;
       for (const k in node){
         const v = node[k];
         if (!v) continue;
@@ -165,64 +170,51 @@
           const ch = Number(v.ch);
           const name = typeof v.name === 'string' ? v.name : undefined;
           if (Number.isFinite(ts) && ch>=0 && ch<4) out.push({ ts, ch, name });
-        } else if (typeof v === 'object') {
-          collectEvents(v, out); // dive deeper (HHmm → pushId)
+        } else if (typeof v === 'object'){
+          collectEvents(v, out);
         }
       }
     }
 
     function renderToday(rows){
-      // counters (today)
-      const cnt = [0,0,0,0];
-      for (const r of rows) if (r.ch>=0 && r.ch<4) cnt[r.ch]++;
-      el.c0.textContent = cnt[0];
-      el.c1.textContent = cnt[1];
-      el.c2.textContent = cnt[2];
-      el.c3.textContent = cnt[3];
+      const cnt=[0,0,0,0];
+      rows.forEach(r=>{ if(r.ch>=0&&r.ch<4) cnt[r.ch]++; });
+      el.c0.textContent=cnt[0]; el.c1.textContent=cnt[1];
+      el.c2.textContent=cnt[2]; el.c3.textContent=cnt[3];
 
-      // table
-      const frag = document.createDocumentFragment();
-      for (let i = rows.length-1; i >= 0; i--) { // newest first
-        const r = rows[i];
-        const tr = document.createElement('tr');
-        const td1 = document.createElement('td');
-        const td2 = document.createElement('td');
-        td1.textContent = new Date(r.ts).toLocaleString();
-        const label = r.name || CH_LABEL[r.ch] || `CH${r.ch}`;
-        td2.innerHTML = `<span class="dot ch${r.ch}"></span>${label} (0→1)`;
-        tr.appendChild(td1); tr.appendChild(td2);
-        frag.appendChild(tr);
+      const frag=document.createDocumentFragment();
+      for(let i=rows.length-1;i>=0;i--){
+        const r=rows[i];
+        const tr=document.createElement('tr');
+        const td1=document.createElement('td');
+        const td2=document.createElement('td');
+        td1.textContent=new Date(r.ts).toLocaleString();
+        const label=r.name||CH_LABEL[r.ch]||`CH${r.ch}`;
+        td2.innerHTML=`<span class="dot ch${r.ch}"></span>${label} (0→1)`;
+        tr.append(td1,td2); frag.appendChild(tr);
       }
-      el.feedBody.innerHTML = "";
-      el.feedBody.appendChild(frag);
+      el.feedBody.innerHTML=""; el.feedBody.appendChild(frag);
     }
 
-    // ====== COUNTERS (ALL) ======
+    // ===== Counters (ALL) =====
     async function refreshAllCounters(){
-      // Traverse whole /onoff/events tree (year→month→day→hhmm)
-      const counts = [0,0,0,0];
-
-      // Use REST shallow with auth token (more efficient)
+      const counts=[0,0,0,0];
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
 
       const years = await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
       if (!years) return renderAllCounts(counts);
-
       for (const y of Object.keys(years)){
-        const months = await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`);
+        const months = await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`); if(!months) continue;
         for (const m of Object.keys(months)){
-          const days = await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`);
+          const days = await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`); if(!days) continue;
           for (const d of Object.keys(days)){
-            const hhmm = await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`);
+            const hhmm = await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`); if(!hhmm) continue;
             for (const h of Object.keys(hhmm)){
-              const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`);
-              if (!minuteNode) continue;
+              const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`); if(!minuteNode) continue;
               for (const k of Object.keys(minuteNode)){
                 const e = minuteNode[k];
-                if (typeof e?.ch === 'number' && e.ch >=0 && e.ch < 4){
-                  counts[e.ch] += 1;
-                }
+                if (typeof e?.ch === 'number' && e.ch>=0 && e.ch<4) counts[e.ch]+=1;
               }
             }
           }
@@ -230,22 +222,62 @@
       }
       renderAllCounts(counts);
     }
-
-    function renderAllCounts(counts){
-      el.a0.textContent = counts[0];
-      el.a1.textContent = counts[1];
-      el.a2.textContent = counts[2];
-      el.a3.textContent = counts[3];
+    function renderAllCounts(c){
+      el.a0.textContent=c[0]; el.a1.textContent=c[1]; el.a2.textContent=c[2]; el.a3.textContent=c[3];
     }
 
-    // --- helpers (REST) ---
-    async function jget(url){
-      const r = await fetch(url);
-      if(!r.ok) return null;
-      return r.json();
+    // ===== Downloads =====
+    function downloadCsv(rows, filename){
+      const header = ["timestamp_iso","timestamp_ms","channel","label","edge"];
+      const lines = [header.join(",")];
+      for (const r of rows){
+        const iso=new Date(r.ts).toISOString();
+        const ms=r.ts;
+        const ch=r.ch;
+        const label=(r.name||CH_LABEL[r.ch]||`CH${r.ch}`).replace(/,/g," ");
+        lines.push([iso,ms,ch,label,"0->1"].join(","));
+      }
+      const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
 
-    // helpers
+    async function downloadAllCsv(){
+      // Traverse all then reuse CSV builder
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
+      const rows=[];
+
+      const years = await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
+      if (!years) return downloadCsv([], "events_all.csv");
+      for (const y of Object.keys(years)){
+        const months = await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`); if(!months) continue;
+        for (const m of Object.keys(months)){
+          const days = await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`); if(!days) continue;
+          for (const d of Object.keys(days)){
+            const hhmm = await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`); if(!hhmm) continue;
+            for (const h of Object.keys(hhmm)){
+              const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`); if(!minuteNode) continue;
+              for (const k of Object.keys(minuteNode)){
+                const e = minuteNode[k];
+                if (typeof e?.ch === 'number' && e.ch>=0 && e.ch<4){
+                  const ts = toMs(e.ts);
+                  if (Number.isFinite(ts)) rows.push({ ts, ch:Number(e.ch), name:e.name });
+                }
+              }
+            }
+          }
+        }
+      }
+      rows.sort((a,b)=>a.ts-b.ts);
+      downloadCsv(rows, "events_all.csv");
+    }
+
+    // --- helpers ---
+    async function jget(url){ const r=await fetch(url); if(!r.ok) return null; return r.json(); }
     function pad(n){ return String(n).padStart(2,'0'); }
     function toMs(ts){
       if (ts==null) return NaN;
