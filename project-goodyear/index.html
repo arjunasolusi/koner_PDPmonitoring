@@ -9,9 +9,16 @@
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    h1{margin:24px 0 8px;font-size:28px}
-    .h6{margin:0 0 12px;font-size:12px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase}
-    .sub{margin:0 24px;color:var(--muted)}
+
+    /* --- Header --- */
+    .header{text-align:center;margin-top:24px;margin-bottom:16px;}
+    .logo{height:48px;display:block;margin:0 auto 8px;}
+    .brand{font-weight:700;letter-spacing:0.12em;font-size:18px;margin:0;}
+    .subtitle{font-weight:600;font-size:16px;margin:2px 0 12px;}
+    h1{font-size:26px;margin:8px 0 6px;text-align:center;}
+    .sub{color:var(--muted);text-align:center;margin-bottom:16px;}
+
+    /* --- Layout --- */
     .container{max-width:1160px;margin:0 auto;padding:0 16px 32px}
     .card{border:1px solid var(--border);border-radius:12px;padding:16px;margin:16px 0;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
     .grid{display:grid;gap:12px}
@@ -28,13 +35,7 @@
     th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
     thead th{background:#fafafa;position:sticky;top:0}
     .dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:6px}
-    /* 6 warna kanal */
-    .ch0{background:#ef4444}   /* red */
-    .ch1{background:#f59e0b}   /* amber */
-    .ch2{background:#16a34a}   /* green */
-    .ch3{background:#3b82f6}   /* blue */
-    .ch4{background:#8b5cf6}   /* violet */
-    .ch5{background:#ef5da8}   /* pink */
+    .ch0{background:#ef4444}.ch1{background:#f59e0b}.ch2{background:#16a34a}.ch3{background:#3b82f6}.ch4{background:#8b5cf6}.ch5{background:#ef5da8}
     @media (max-width:480px){.kpi .value{font-size:24px}}
   </style>
 
@@ -44,7 +45,6 @@
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // --- Firebase config ---
     const firebaseConfig = {
       apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
       authDomain: "koner-dewpoint.firebaseapp.com",
@@ -52,7 +52,6 @@
       projectId: "koner-dewpoint"
     };
 
-    // --- App constants ---
     const ROOT = "/onoff";
     const CH_LABEL = [
       "Gripping",
@@ -64,16 +63,20 @@
     ];
     const N = CH_LABEL.length;
 
-    // ===== Init =====
     const app = initializeApp(firebaseConfig);
     const db  = getDatabase(app);
     const auth = getAuth(app);
 
-    // ====== Static HTML ======
+    // ===== Build Static HTML =====
     document.body.innerHTML = `
       <div class="container">
-        <h1>PROJECT GOODYEAR – Gripper Cutter</h1>
-        <p class="sub">Last fetch: <span id="last">—</span></p>
+        <div class="header">
+          <img src="Logo Koner hitam.png" alt="Koner Logo" class="logo">
+          <h2 class="brand">KÖNER</h2>
+          <h2>PROJECT GOODYEAR</h2>
+          <h3>Auto Pick Up & Cutter BB3</h3>
+          <p class="sub">Last update: <span id="last">—</span></p>
+        </div>
 
         <!-- COUNTERS (TODAY) -->
         <section class="card">
@@ -112,18 +115,19 @@
       </div>
     `;
 
-    // Build KPI boxes dynamically (6 channels)
+    // ===== JS Logic =====
     const todayGrid = document.getElementById("todayGrid");
     const allGrid   = document.getElementById("allGrid");
     const todayEls = [], allEls = [];
+
     for (let i=0;i<N;i++){
-      const t = document.createElement("div");
+      const t=document.createElement("div");
       t.className="kpi";
-      t.innerHTML = `<div class="label">${CH_LABEL[i]}</div><div id="c${i}" class="value">0</div>`;
+      t.innerHTML=`<div class="label">${CH_LABEL[i]}</div><div id="c${i}" class="value">0</div>`;
       todayGrid.appendChild(t); todayEls.push(document.getElementById(`c${i}`));
-      const a = document.createElement("div");
+      const a=document.createElement("div");
       a.className="kpi";
-      a.innerHTML = `<div class="label">${CH_LABEL[i]}</div><div id="a${i}" class="value">0</div>`;
+      a.innerHTML=`<div class="label">${CH_LABEL[i]}</div><div id="a${i}" class="value">0</div>`;
       allGrid.appendChild(a); allEls.push(document.getElementById(`a${i}`));
     }
 
@@ -136,96 +140,75 @@
       feedBody: document.getElementById("feed")
     };
 
-    // default date = today (local)
     el.date.valueAsDate = new Date();
-
-    let currentRows = []; // cache rows for day table
+    let currentRows = [];
 
     el.refresh.onclick = () => loadDay(el.date.value);
     el.dlDay.onclick = () => downloadCsv(currentRows, `events_${el.date.value}.csv`);
     el.dlAll.onclick = () => downloadAllCsv();
 
-    // ===== Auth & initial load =====
-    onAuthStateChanged(auth, async (u) => {
-      if (!u) { await signInAnonymously(auth); return; }
+    onAuthStateChanged(auth, async (u)=>{
+      if(!u){await signInAnonymously(auth);return;}
       await loadDay(el.date.value);
       await refreshAllCounters();
     });
 
-    // ===== Load one day =====
     async function loadDay(dateStr){
-      if (!dateStr) return;
-      const d = new Date(dateStr + "T00:00:00");
-      const Y = d.getFullYear().toString();
-      const M = pad(d.getMonth()+1);
-      const D = pad(d.getDate());
-      const dayRef = ref(db, `${ROOT}/events/${Y}/${M}/${D}`);
-      const snap = await get(dayRef);
-
-      const rows = [];
-      if (snap.exists()) collectEvents(snap.val(), rows);
+      if(!dateStr)return;
+      const d=new Date(dateStr+"T00:00:00");
+      const Y=d.getFullYear().toString(),M=pad(d.getMonth()+1),D=pad(d.getDate());
+      const dayRef=ref(db,`${ROOT}/events/${Y}/${M}/${D}`);
+      const snap=await get(dayRef);
+      const rows=[];
+      if(snap.exists()) collectEvents(snap.val(),rows);
       rows.sort((a,b)=>a.ts-b.ts);
-      currentRows = rows;
+      currentRows=rows;
       renderToday(rows);
-      el.last.textContent = new Date().toLocaleString();
+      el.last.textContent=new Date().toLocaleString();
     }
 
-    // recursively collect {ts,ch,name}
-    function collectEvents(node, out){
-      if (!node || typeof node !== 'object') return;
-      for (const k in node){
-        const v = node[k];
-        if (!v) continue;
-        if (typeof v === 'object' && 'ts' in v && 'ch' in v){
-          const ts = toMs(v.ts);
-          const ch = Number(v.ch);
-          const name = typeof v.name === 'string' ? v.name : undefined;
-          if (Number.isFinite(ts) && ch>=0 && ch<N) out.push({ ts, ch, name });
-        } else if (typeof v === 'object'){
-          collectEvents(v, out);
-        }
+    function collectEvents(node,out){
+      if(!node||typeof node!=='object')return;
+      for(const k in node){
+        const v=node[k];
+        if(typeof v==='object'&&'ts'in v&&'ch'in v){
+          const ts=toMs(v.ts),ch=Number(v.ch),name=v.name||undefined;
+          if(Number.isFinite(ts)&&ch>=0&&ch<N)out.push({ts,ch,name});
+        }else if(typeof v==='object'){collectEvents(v,out);}
       }
     }
 
     function renderToday(rows){
-      const cnt = Array(N).fill(0);
-      rows.forEach(r=>{ if(r.ch>=0&&r.ch<N) cnt[r.ch]++; });
-      for (let i=0;i<N;i++) todayEls[i].textContent = cnt[i];
-
+      const cnt=Array(N).fill(0);
+      rows.forEach(r=>{if(r.ch>=0&&r.ch<N)cnt[r.ch]++;});
+      for(let i=0;i<N;i++)todayEls[i].textContent=cnt[i];
       const frag=document.createDocumentFragment();
       for(let i=rows.length-1;i>=0;i--){
         const r=rows[i];
         const tr=document.createElement('tr');
-        const td1=document.createElement('td');
-        const td2=document.createElement('td');
-        td1.textContent=new Date(r.ts).toLocaleString();
-        const label=r.name||CH_LABEL[r.ch]||`CH${r.ch}`;
-        td2.innerHTML=`<span class="dot ch${r.ch}"></span>${label} (0→1)`;
-        tr.append(td1,td2); frag.appendChild(tr);
+        tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td><span class="dot ch${r.ch}"></span>${r.name||CH_LABEL[r.ch]} (0→1)</td>`;
+        frag.appendChild(tr);
       }
-      el.feedBody.innerHTML=""; el.feedBody.appendChild(frag);
+      el.feedBody.innerHTML="";el.feedBody.appendChild(frag);
     }
 
-    // ===== Counters (ALL) =====
     async function refreshAllCounters(){
-      const counts = Array(N).fill(0);
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
-
-      const years = await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
-      if (!years) return renderAllCounts(counts);
-      for (const y of Object.keys(years)){
-        const months = await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`); if(!months) continue;
-        for (const m of Object.keys(months)){
-          const days = await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`); if(!days) continue;
-          for (const d of Object.keys(days)){
-            const hhmm = await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`); if(!hhmm) continue;
-            for (const h of Object.keys(hhmm)){
-              const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`); if(!minuteNode) continue;
-              for (const k of Object.keys(minuteNode)){
-                const e = minuteNode[k];
-                const ch = Number(e?.ch);
-                if (Number.isFinite(ch) && ch>=0 && ch<N) counts[ch] += 1;
+      const counts=Array(N).fill(0);
+      const token=auth.currentUser?await auth.currentUser.getIdToken():null;
+      const base=firebaseConfig.databaseURL.replace(/\/$/,'')+`${ROOT}/events`;
+      const years=await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
+      if(!years)return renderAllCounts(counts);
+      for(const y of Object.keys(years)){
+        const months=await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`);if(!months)continue;
+        for(const m of Object.keys(months)){
+          const days=await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`);if(!days)continue;
+          for(const d of Object.keys(days)){
+            const hhmm=await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`);if(!hhmm)continue;
+            for(const h of Object.keys(hhmm)){
+              const minuteNode=await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`);if(!minuteNode)continue;
+              for(const k of Object.keys(minuteNode)){
+                const e=minuteNode[k];const ch=Number(e?.ch);
+                if(Number.isFinite(ch)&&ch>=0&&ch<N)counts[ch]+=1;
               }
             }
           }
@@ -233,69 +216,52 @@
       }
       renderAllCounts(counts);
     }
-    function renderAllCounts(c){
-      for (let i=0;i<N;i++) allEls[i].textContent = c[i];
-    }
 
-    // ===== Downloads =====
-    function downloadCsv(rows, filename){
-      const header = ["timestamp_iso","timestamp_ms","channel","label","edge"];
-      const lines = [header.join(",")];
-      for (const r of rows){
+    function renderAllCounts(c){for(let i=0;i<N;i++)allEls[i].textContent=c[i];}
+
+    function downloadCsv(rows,filename){
+      const header=["timestamp_iso","timestamp_ms","channel","label","edge"];
+      const lines=[header.join(",")];
+      for(const r of rows){
         const iso=new Date(r.ts).toISOString();
-        const ms=r.ts;
-        const ch=r.ch;
-        const label=(r.name||CH_LABEL[r.ch]||`CH${r.ch}`).replace(/,/g," ");
-        lines.push([iso,ms,ch,label,"0->1"].join(","));
+        lines.push([iso,r.ts,r.ch,(r.name||CH_LABEL[r.ch]).replace(/,/g," "),"0->1"].join(","));
       }
-      const blob = new Blob([lines.join("\n")], {type:"text/csv"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const blob=new Blob([lines.join("\n")],{type:"text/csv"});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=filename;a.click();URL.revokeObjectURL(a.href);
     }
 
     async function downloadAllCsv(){
-      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-      const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
+      const token=auth.currentUser?await auth.currentUser.getIdToken():null;
+      const base=firebaseConfig.databaseURL.replace(/\/$/,'')+`${ROOT}/events`;
       const rows=[];
-
-      const years = await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
-      if (!years) return downloadCsv([], "events_all.csv");
-      for (const y of Object.keys(years)){
-        const months = await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`); if(!months) continue;
-        for (const m of Object.keys(months)){
-          const days = await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`); if(!days) continue;
-          for (const d of Object.keys(days)){
-            const hhmm = await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`); if(!hhmm) continue;
-            for (const h of Object.keys(hhmm)){
-              const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`); if(!minuteNode) continue;
-              for (const k of Object.keys(minuteNode)){
-                const e = minuteNode[k];
-                const ts = toMs(e?.ts);
-                const ch = Number(e?.ch);
-                if (Number.isFinite(ts) && Number.isFinite(ch) && ch>=0 && ch<N){
-                  rows.push({ ts, ch, name:e.name });
-                }
+      const years=await jget(`${base}.json?shallow=true${token?`&auth=${token}`:''}`);
+      if(!years)return downloadCsv([], "events_all.csv");
+      for(const y of Object.keys(years)){
+        const months=await jget(`${base}/${y}.json?shallow=true${token?`&auth=${token}`:''}`);if(!months)continue;
+        for(const m of Object.keys(months)){
+          const days=await jget(`${base}/${y}/${m}.json?shallow=true${token?`&auth=${token}`:''}`);if(!days)continue;
+          for(const d of Object.keys(days)){
+            const hhmm=await jget(`${base}/${y}/${m}/${d}.json?shallow=true${token?`&auth=${token}`:''}`);if(!hhmm)continue;
+            for(const h of Object.keys(hhmm)){
+              const minuteNode=await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`);if(!minuteNode)continue;
+              for(const k of Object.keys(minuteNode)){
+                const e=minuteNode[k];const ts=toMs(e?.ts),ch=Number(e?.ch);
+                if(Number.isFinite(ts)&&Number.isFinite(ch)&&ch>=0&&ch<N)
+                  rows.push({ts,ch,name:e.name});
               }
             }
           }
         }
       }
       rows.sort((a,b)=>a.ts-b.ts);
-      downloadCsv(rows, "events_all.csv");
+      downloadCsv(rows,"events_all.csv");
     }
 
-    // --- helpers ---
-    async function jget(url){ const r=await fetch(url); if(!r.ok) return null; return r.json(); }
-    function pad(n){ return String(n).padStart(2,'0'); }
-    function toMs(ts){
-      if (ts==null) return NaN;
-      if (typeof ts==='number') return ts<2e10? ts*1000:ts;
-      if (typeof ts==='string') return new Date(ts).getTime();
-      return NaN;
-    }
+    async function jget(url){const r=await fetch(url);if(!r.ok)return null;return r.json();}
+    function pad(n){return String(n).padStart(2,'0');}
+    function toMs(ts){if(ts==null)return NaN;if(typeof ts==='number')return ts<2e10?ts*1000:ts;if(typeof ts==='string')return new Date(ts).getTime();return NaN;}
   </script>
 </head>
 <body></body>
