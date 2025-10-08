@@ -17,18 +17,24 @@
     .grid{display:grid;gap:12px}
     .counters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
     .kpi{border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:4px;background:#fff}
-    .kpi .label{color:var(--muted);font-size:12px;text-transform:none;letter-spacing:0}
+    .kpi .label{color:var(--muted);font-size:12px}
     .kpi .value{font-size:28px;font-weight:700;line-height:1;margin-top:2px}
     .controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
     .controls input[type="date"],.controls button{height:36px;border:1px solid var(--border);border-radius:8px;padding:0 12px;background:#fff;font:inherit;cursor:pointer}
     .controls button:hover{background:#f8fafc}
     .help{margin-top:6px;color:var(--muted);font-size:12px}
     .table-wrap{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:12px}
-    table{width:100%;border-collapse:collapse;min-width:420px}
+    table{width:100%;border-collapse:collapse;min-width:480px}
     th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
     thead th{background:#fafafa;position:sticky;top:0}
     .dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:6px}
-    .ch0{background:#ef4444}.ch1{background:#f59e0b}.ch2{background:#16a34a}.ch3{background:#3b82f6}
+    /* 6 warna kanal */
+    .ch0{background:#ef4444}   /* red */
+    .ch1{background:#f59e0b}   /* amber */
+    .ch2{background:#16a34a}   /* green */
+    .ch3{background:#3b82f6}   /* blue */
+    .ch4{background:#8b5cf6}   /* violet */
+    .ch5{background:#ef5da8}   /* pink */
     @media (max-width:480px){.kpi .value{font-size:24px}}
   </style>
 
@@ -48,7 +54,15 @@
 
     // --- App constants ---
     const ROOT = "/onoff";
-    const CH_LABEL = ["Gripping","Cutting","Ballup","Fault"]; // 0..3
+    const CH_LABEL = [
+      "Gripping",
+      "Cutting",
+      "Alarm Ballup & Overheight",
+      "Alarm Gripper",
+      "Alarm Interlock Door",
+      "Alarm Emergency Button"
+    ];
+    const N = CH_LABEL.length;
 
     // ===== Init =====
     const app = initializeApp(firebaseConfig);
@@ -64,23 +78,13 @@
         <!-- COUNTERS (TODAY) -->
         <section class="card">
           <h2 class="h6">COUNTERS (TODAY)</h2>
-          <div class="grid counters">
-            <div class="kpi"><div class="label">${CH_LABEL[0]}</div><div id="c0" class="value">0</div></div>
-            <div class="kpi"><div class="label">${CH_LABEL[1]}</div><div id="c1" class="value">0</div></div>
-            <div class="kpi"><div class="label">${CH_LABEL[2]}</div><div id="c2" class="value">0</div></div>
-            <div class="kpi"><div class="label">${CH_LABEL[3]}</div><div id="c3" class="value">0</div></div>
-          </div>
+          <div class="grid counters" id="todayGrid"></div>
         </section>
 
         <!-- COUNTERS (ALL) -->
         <section class="card">
           <h2 class="h6">COUNTERS (ALL)</h2>
-          <div class="grid counters">
-            <div class="kpi"><div class="label">${CH_LABEL[0]}</div><div id="a0" class="value">0</div></div>
-            <div class="kpi"><div class="label">${CH_LABEL[1]}</div><div id="a1" class="value">0</div></div>
-            <div class="kpi"><div class="label">${CH_LABEL[2]}</div><div id="a2" class="value">0</div></div>
-            <div class="kpi"><div class="label">${CH_LABEL[3]}</div><div id="a3" class="value">0</div></div>
-          </div>
+          <div class="grid counters" id="allGrid"></div>
         </section>
 
         <!-- CONTROLS -->
@@ -108,16 +112,23 @@
       </div>
     `;
 
+    // Build KPI boxes dynamically (6 channels)
+    const todayGrid = document.getElementById("todayGrid");
+    const allGrid   = document.getElementById("allGrid");
+    const todayEls = [], allEls = [];
+    for (let i=0;i<N;i++){
+      const t = document.createElement("div");
+      t.className="kpi";
+      t.innerHTML = `<div class="label">${CH_LABEL[i]}</div><div id="c${i}" class="value">0</div>`;
+      todayGrid.appendChild(t); todayEls.push(document.getElementById(`c${i}`));
+      const a = document.createElement("div");
+      a.className="kpi";
+      a.innerHTML = `<div class="label">${CH_LABEL[i]}</div><div id="a${i}" class="value">0</div>`;
+      allGrid.appendChild(a); allEls.push(document.getElementById(`a${i}`));
+    }
+
     const el = {
       last: document.getElementById("last"),
-      c0: document.getElementById("c0"),
-      c1: document.getElementById("c1"),
-      c2: document.getElementById("c2"),
-      c3: document.getElementById("c3"),
-      a0: document.getElementById("a0"),
-      a1: document.getElementById("a1"),
-      a2: document.getElementById("a2"),
-      a3: document.getElementById("a3"),
       date: document.getElementById("datepick"),
       refresh: document.getElementById("refresh"),
       dlDay: document.getElementById("dlDay"),
@@ -169,7 +180,7 @@
           const ts = toMs(v.ts);
           const ch = Number(v.ch);
           const name = typeof v.name === 'string' ? v.name : undefined;
-          if (Number.isFinite(ts) && ch>=0 && ch<4) out.push({ ts, ch, name });
+          if (Number.isFinite(ts) && ch>=0 && ch<N) out.push({ ts, ch, name });
         } else if (typeof v === 'object'){
           collectEvents(v, out);
         }
@@ -177,10 +188,9 @@
     }
 
     function renderToday(rows){
-      const cnt=[0,0,0,0];
-      rows.forEach(r=>{ if(r.ch>=0&&r.ch<4) cnt[r.ch]++; });
-      el.c0.textContent=cnt[0]; el.c1.textContent=cnt[1];
-      el.c2.textContent=cnt[2]; el.c3.textContent=cnt[3];
+      const cnt = Array(N).fill(0);
+      rows.forEach(r=>{ if(r.ch>=0&&r.ch<N) cnt[r.ch]++; });
+      for (let i=0;i<N;i++) todayEls[i].textContent = cnt[i];
 
       const frag=document.createDocumentFragment();
       for(let i=rows.length-1;i>=0;i--){
@@ -198,7 +208,7 @@
 
     // ===== Counters (ALL) =====
     async function refreshAllCounters(){
-      const counts=[0,0,0,0];
+      const counts = Array(N).fill(0);
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
 
@@ -214,7 +224,8 @@
               const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`); if(!minuteNode) continue;
               for (const k of Object.keys(minuteNode)){
                 const e = minuteNode[k];
-                if (typeof e?.ch === 'number' && e.ch>=0 && e.ch<4) counts[e.ch]+=1;
+                const ch = Number(e?.ch);
+                if (Number.isFinite(ch) && ch>=0 && ch<N) counts[ch] += 1;
               }
             }
           }
@@ -223,7 +234,7 @@
       renderAllCounts(counts);
     }
     function renderAllCounts(c){
-      el.a0.textContent=c[0]; el.a1.textContent=c[1]; el.a2.textContent=c[2]; el.a3.textContent=c[3];
+      for (let i=0;i<N;i++) allEls[i].textContent = c[i];
     }
 
     // ===== Downloads =====
@@ -246,7 +257,6 @@
     }
 
     async function downloadAllCsv(){
-      // Traverse all then reuse CSV builder
       const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
       const base = firebaseConfig.databaseURL.replace(/\/$/,'') + `${ROOT}/events`;
       const rows=[];
@@ -263,9 +273,10 @@
               const minuteNode = await jget(`${base}/${y}/${m}/${d}/${h}.json${token?`?auth=${token}`:''}`); if(!minuteNode) continue;
               for (const k of Object.keys(minuteNode)){
                 const e = minuteNode[k];
-                if (typeof e?.ch === 'number' && e.ch>=0 && e.ch<4){
-                  const ts = toMs(e.ts);
-                  if (Number.isFinite(ts)) rows.push({ ts, ch:Number(e.ch), name:e.name });
+                const ts = toMs(e?.ts);
+                const ch = Number(e?.ch);
+                if (Number.isFinite(ts) && Number.isFinite(ch) && ch>=0 && ch<N){
+                  rows.push({ ts, ch, name:e.name });
                 }
               }
             }
