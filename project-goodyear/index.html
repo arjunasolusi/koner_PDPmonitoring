@@ -77,6 +77,18 @@
           <p class="sub">Last update: <span id="last">—</span></p>
         </div>
 
+        <!-- SELECT DATE (moved to top) -->
+        <section class="card">
+          <h2 class="h6">SELECT DATE</h2>
+          <div class="controls">
+            <input type="date" id="datepick" />
+            <button id="refresh">Refresh</button>
+            <button id="dlDay">Download CSV (Day)</button>
+            <button id="dlAll">Download CSV (All)</button>
+          </div>
+          <p class="help">Display data for the selected date.</p>
+        </section>
+
         <!-- COUNTERS (SELECTED DATE) -->
         <section class="card">
           <h2 class="h6">COUNTERS (SELECTED DATE)</h2>
@@ -87,18 +99,6 @@
         <section class="card">
           <h2 class="h6">COUNTERS (ALL DATA)</h2>
           <div class="grid counters" id="allGrid"></div>
-        </section>
-
-        <!-- SELECT DATE -->
-        <section class="card">
-          <h2 class="h6">SELECT DATE</h2>
-          <div class="controls">
-            <input type="date" id="datepick" />
-            <button id="refresh">Refresh</button>
-            <button id="dlDay">Download CSV (Day)</button>
-            <button id="dlAll">Download CSV (All)</button>
-          </div>
-          <p class="help">Display data for the selected date.</p>
         </section>
 
         <!-- EVENT FEED -->
