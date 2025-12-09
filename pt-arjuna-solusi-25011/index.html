@@ -68,12 +68,20 @@
       max-width: 150px;
       margin-bottom: 10px;
     }
+    .sub-title {
+      color: #3F47CD;
+      font-size: 20px;
+      font-weight: 600;
+      margin-top: -5px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <img src="Logo Koner hitam.png" alt="Logo" class="logo" />
     <h1>IoT Dewpoint Monitoring</h1>
+    <div class="sub-title">PT Arjuna Solusi Sejahtera</div>
 
     <div class="live-section">
       <div class="live-label">Live Dewpoint:</div>
@@ -92,7 +100,7 @@
   </div>
 
   <script type="module">
-    const PASSCODE = "kid-25011";
+    const PASSCODE = "25011";
     const input = prompt("PASSCODE");
     if (input !== PASSCODE) {
       document.body.innerHTML = "<h1>Akses ditolak</h1>";
@@ -143,6 +151,8 @@
             grid: { color: "#fff" }
           },
           y: {
+            min: -50,
+            max: 20,
             ticks: { color: "#aaa" },
             grid: { color: "#ddd" }
           }
@@ -247,4 +257,3 @@
   </footer>
 </body>
 </html>
-
