@@ -68,12 +68,66 @@
       max-width: 150px;
       margin-bottom: 10px;
     }
+
     .sub-title {
       color: #3F47CD;
       font-size: 20px;
       font-weight: 600;
       margin-top: -5px;
       margin-bottom: 20px;
+    }
+
+    /* Alarm + event feed */
+    #alarm-box {
+      margin: 12px auto 18px;
+      padding: 12px;
+      border-radius: 12px;
+      max-width: 420px;
+      font-weight: 700;
+      font-size: 16px;
+      border: 2px solid #ddd;
+    }
+
+    .feed-wrap {
+      max-width: 900px;
+      margin: 16px auto 0;
+      text-align: left;
+    }
+
+    .feed-title {
+      margin: 10px 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .feed-table-wrap {
+      overflow: auto;
+      border: 1px solid #eee;
+      border-radius: 12px;
+    }
+
+    table.feed {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    table.feed thead tr {
+      background: #f7f7f7;
+    }
+
+    table.feed th, table.feed td {
+      padding: 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    table.feed td.num, table.feed th.num {
+      text-align: right;
+    }
+
+    table.feed tbody tr {
+      border-top: 1px solid #eee;
     }
   </style>
 </head>
@@ -90,6 +144,11 @@
       <div class="timestamp" id="last-updated">Last updated: --</div>
     </div>
 
+    <!-- Alarm status (UI only; event + telegram will be handled by GitHub Actions later) -->
+    <div id="alarm-box">
+      ALARM STATUS: <span id="alarm-text">--</span>
+    </div>
+
     <canvas id="trend-chart"></canvas>
 
     <div class="buttons">
@@ -97,6 +156,26 @@
       <button id="download-3d">Download Last 3 Days</button>
       <button id="download-24h">Download Last 24 Hours</button>
     </div>
+
+    <!-- Event Feed (will show entries written by GitHub Actions to /beta_alarm/events) -->
+    <div class="feed-wrap">
+      <div class="feed-title">Event Feed</div>
+      <div class="feed-table-wrap">
+        <table class="feed">
+          <thead>
+            <tr>
+              <th style="width: 240px;">Time</th>
+              <th style="width: 140px;">Event</th>
+              <th class="num" style="width: 140px;">Dewpoint</th>
+            </tr>
+          </thead>
+          <tbody id="event-feed">
+            <tr><td colspan="3">No events</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <script type="module">
@@ -106,12 +185,15 @@
       document.body.innerHTML = "<h1>Akses ditolak</h1>";
       throw new Error("Unauthorized");
     }
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import {
       getDatabase,
       ref,
       onValue,
-      get
+      get,
+      query,
+      limitToLast
     } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
@@ -123,13 +205,37 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+
+    // Existing data path (unchanged)
     const rootRef = ref(db, "/beta");
+
+    // New event feed path (GitHub Actions will write here later)
+    const eventsRef = ref(db, "/beta_alarm/events");
 
     const liveValue = document.getElementById("live-value");
     const lastUpdated = document.getElementById("last-updated");
     const downloadAllBtn = document.getElementById("download-all");
     const download3DaysBtn = document.getElementById("download-3d");
     const download24hBtn = document.getElementById("download-24h");
+
+    const alarmBox = document.getElementById("alarm-box");
+    const alarmText = document.getElementById("alarm-text");
+    const eventFeed = document.getElementById("event-feed");
+
+    function setAlarmUI(state) {
+      // UI-only indicator; true hysteresis + logging comes from GitHub Actions next step.
+      if (state === "ALARM") {
+        alarmBox.style.background = "#ffe8e8";
+        alarmBox.style.borderColor = "#ff4d4d";
+        alarmText.style.color = "#c80000";
+        alarmText.textContent = "ALARM (>= 0°Ctd)";
+      } else {
+        alarmBox.style.background = "#eaffea";
+        alarmBox.style.borderColor = "#2ecc71";
+        alarmText.style.color = "#0b7a2a";
+        alarmText.textContent = "SAFE";
+      }
+    }
 
     const chart = new Chart(document.getElementById("trend-chart").getContext("2d"), {
       type: "line",
@@ -190,9 +296,47 @@
         chart.update();
 
         const lastLocal = new Date(filtered[filtered.length - 1][0]);
-        liveValue.textContent = values[values.length - 1].toFixed(2);
+        const lastDp = values[values.length - 1];
+
+        liveValue.textContent = lastDp.toFixed(2);
         lastUpdated.textContent = `Last updated: ${lastLocal.toLocaleString("id-ID")}`;
+
+        // UI-only alarm indicator (temporary)
+        setAlarmUI((lastDp >= 0) ? "ALARM" : "SAFE");
       }
+    });
+
+    // Event feed: show latest 30 events from /beta_alarm/events
+    const eventsQ = query(eventsRef, limitToLast(50));
+    onValue(eventsQ, (snap) => {
+      const data = snap.val();
+      if (!data) {
+        eventFeed.innerHTML = `<tr><td colspan="3">No events</td></tr>`;
+        return;
+      }
+
+      const rows = Object.entries(data)
+        .map(([id, e]) => ({ id, ...e }))
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+        .slice(0, 30);
+
+      eventFeed.innerHTML = rows.map(e => {
+        const t = e.ts ? new Date(e.ts).toLocaleString("id-ID") : "-";
+        const type = e.type || "-";
+        const val = (typeof e.val === "number") ? e.val.toFixed(2) : "-";
+
+        const color = (type === "ALARM_ON") ? "#c80000"
+                    : (type === "ALARM_OFF") ? "#0b7a2a"
+                    : "#333";
+
+        return `
+          <tr>
+            <td>${t}</td>
+            <td style="color:${color}; font-weight:700;">${type}</td>
+            <td class="num">${val}</td>
+          </tr>
+        `;
+      }).join("");
     });
 
     downloadAllBtn.onclick = async () => {
@@ -257,4 +401,3 @@
   </footer>
 </body>
 </html>
-
