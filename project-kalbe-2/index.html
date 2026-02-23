@@ -28,38 +28,61 @@
       margin-bottom: 10px;
     }
 
-    h1 {
-      margin: 10px 0 6px 0;
-    }
+    h1 { margin: 10px 0 6px 0; }
 
     .sub-title {
       color: #3F47CD;
       font-size: 20px;
       font-weight: 600;
-      margin-top: 0;
-      margin-bottom: 18px;
+      margin: 0 0 18px 0;
     }
 
-    .section-title {
+    /* Accordion */
+    .accordion {
+      border: 1px solid #eaeaea;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 14px 0;
+      text-align: left;
+    }
+
+    .accordion-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      background: #fafafa;
+      border: none;
+      cursor: pointer;
       font-size: 18px;
       font-weight: 700;
-      margin: 14px 0 10px 0;
     }
 
-    .live-section {
-      margin-bottom: 6px;
+    .accordion-header:focus { outline: none; }
+
+    .chev {
+      font-size: 18px;
+      user-select: none;
+      transform: rotate(0deg);
+      transition: transform .15s ease;
     }
 
-    .live-label {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 4px;
+    .accordion.open .chev { transform: rotate(180deg); }
+
+    .accordion-body {
+      display: none;
+      padding: 14px 16px 16px 16px;
+      border-top: 1px solid #eee;
+      text-align: center;
     }
 
-    .live-value {
-      font-size: 42px;
-      margin: 0;
-    }
+    .accordion.open .accordion-body { display: block; }
+
+    .live-section { margin-bottom: 6px; }
+    .live-label { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+
+    .live-value { font-size: 42px; margin: 0; }
 
     .live-range {
       font-size: 14px;
@@ -80,10 +103,7 @@
       margin: 10px auto 0 auto;
     }
 
-    .buttons {
-      margin-top: 14px;
-    }
-
+    .buttons { margin-top: 14px; }
     .buttons button {
       margin: 5px;
       padding: 10px 16px;
@@ -91,15 +111,7 @@
       cursor: pointer;
     }
 
-    hr.separator {
-      border: none;
-      border-top: 1px solid #e5e5e5;
-      margin: 20px 0;
-    }
-
-    footer {
-      margin-top: 24px;
-    }
+    footer { margin-top: 24px; }
   </style>
 </head>
 
@@ -109,42 +121,54 @@
     <h1>IoT Dewpoint Monitoring</h1>
     <div class="sub-title">PT KALBE FARMA Tbk</div>
 
-    <!-- =================== DRYER 2 =================== -->
-    <div class="section-title">Dryer 2</div>
+    <!-- =================== DRYER 2 (Accordion) =================== -->
+    <div class="accordion" id="acc-d2">
+      <button class="accordion-header" type="button" data-target="acc-d2">
+        <span>Dryer 2</span>
+        <span class="chev">⌄</span>
+      </button>
 
-    <div class="live-section">
-      <div class="live-label">Live Dewpoint:</div>
-      <div class="live-value" id="live-value-d2">--</div>
-      <div class="live-range">Range -100 ... +20°Ctd</div>
-      <div class="timestamp" id="last-updated-d2">Last updated: --</div>
+      <div class="accordion-body">
+        <div class="live-section">
+          <div class="live-label">Live Dewpoint:</div>
+          <div class="live-value" id="live-value-d2">--</div>
+          <div class="live-range">Range -100 ... +20°Ctd</div>
+          <div class="timestamp" id="last-updated-d2">Last updated: --</div>
+        </div>
+
+        <canvas id="trend-chart-d2"></canvas>
+
+        <div class="buttons">
+          <button id="download-all-d2">Download All Data</button>
+          <button id="download-3d-d2">Download Last 3 Days</button>
+          <button id="download-24h-d2">Download Last 24 Hours</button>
+        </div>
+      </div>
     </div>
 
-    <canvas id="trend-chart-d2"></canvas>
+    <!-- =================== DRYER 5 (Accordion) =================== -->
+    <div class="accordion" id="acc-d5">
+      <button class="accordion-header" type="button" data-target="acc-d5">
+        <span>Dryer 5</span>
+        <span class="chev">⌄</span>
+      </button>
 
-    <div class="buttons">
-      <button id="download-all-d2">Download All Data</button>
-      <button id="download-3d-d2">Download Last 3 Days</button>
-      <button id="download-24h-d2">Download Last 24 Hours</button>
-    </div>
+      <div class="accordion-body">
+        <div class="live-section">
+          <div class="live-label">Live Dewpoint:</div>
+          <div class="live-value" id="live-value-d5">--</div>
+          <div class="live-range">Range -100 ... +20°Ctd</div>
+          <div class="timestamp" id="last-updated-d5">Last updated: --</div>
+        </div>
 
-    <hr class="separator" />
+        <canvas id="trend-chart-d5"></canvas>
 
-    <!-- =================== DRYER 5 =================== -->
-    <div class="section-title">Dryer 5</div>
-
-    <div class="live-section">
-      <div class="live-label">Live Dewpoint:</div>
-      <div class="live-value" id="live-value-d5">--</div>
-      <div class="live-range">Range -100 ... +20°Ctd</div>
-      <div class="timestamp" id="last-updated-d5">Last updated: --</div>
-    </div>
-
-    <canvas id="trend-chart-d5"></canvas>
-
-    <div class="buttons">
-      <button id="download-all-d5">Download All Data</button>
-      <button id="download-3d-d5">Download Last 3 Days</button>
-      <button id="download-24h-d5">Download Last 24 Hours</button>
+        <div class="buttons">
+          <button id="download-all-d5">Download All Data</button>
+          <button id="download-3d-d5">Download Last 3 Days</button>
+          <button id="download-24h-d5">Download Last 24 Hours</button>
+        </div>
+      </div>
     </div>
 
     <footer>
@@ -165,6 +189,20 @@
       document.body.innerHTML = "<h1>Akses ditolak</h1>";
       throw new Error("Unauthorized");
     }
+
+    // ====== Accordion behaviour ======
+    function toggleAccordion(id) {
+      const el = document.getElementById(id);
+      const isOpen = el.classList.contains("open");
+      el.classList.toggle("open", !isOpen);
+    }
+
+    document.querySelectorAll(".accordion-header").forEach(btn => {
+      btn.addEventListener("click", () => toggleAccordion(btn.dataset.target));
+    });
+
+    // Optional: auto-open Dryer 2 on load
+    // toggleAccordion("acc-d2");
 
     // ====== FIREBASE ======
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
