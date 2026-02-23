@@ -8,110 +8,44 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    body {
-      background-color: #fff;
-      color: #000;
-      font-family: sans-serif;
-      text-align: center;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 20px;
-      box-sizing: border-box;
-      overflow-x: hidden;
-    }
-
-    .logo {
-      max-width: 150px;
-      margin-bottom: 10px;
-    }
-
-    h1 { margin: 10px 0 6px 0; }
-
-    .sub-title {
-      color: #3F47CD;
-      font-size: 20px;
-      font-weight: 600;
-      margin: 0 0 18px 0;
-    }
+    body { background:#fff; color:#000; font-family:sans-serif; text-align:center; }
+    .container { max-width:900px; margin:0 auto; padding:20px; box-sizing:border-box; overflow-x:hidden; }
+    .logo { max-width:150px; margin-bottom:10px; }
+    h1 { margin:10px 0 6px 0; }
+    .sub-title { color:#3F47CD; font-size:20px; font-weight:600; margin:0 0 18px 0; }
 
     /* Accordion */
-    .accordion {
-      border: 1px solid #eaeaea;
-      border-radius: 10px;
-      overflow: hidden;
-      margin: 14px 0;
-      text-align: left;
-    }
-
+    .accordion { border:1px solid #eaeaea; border-radius:10px; overflow:hidden; margin:14px 0; text-align:left; }
     .accordion-header {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 14px 16px;
-      background: #fafafa;
-      border: none;
-      cursor: pointer;
-      font-size: 18px;
-      font-weight: 700;
+      width:100%; display:flex; justify-content:space-between; align-items:center;
+      padding:14px 16px; background:#fafafa; border:none; cursor:pointer;
+      font-size:18px; font-weight:700;
     }
+    .accordion-header:focus { outline:none; }
 
-    .accordion-header:focus { outline: none; }
-
-    .chev {
-      font-size: 18px;
-      user-select: none;
-      transform: rotate(0deg);
-      transition: transform .15s ease;
-    }
-
-    .accordion.open .chev { transform: rotate(180deg); }
+    .chev { font-size:18px; user-select:none; transform:rotate(0deg); transition:transform .15s ease; }
+    .accordion.open .chev { transform:rotate(180deg); }
 
     .accordion-body {
-      display: none;
-      padding: 14px 16px 16px 16px;
-      border-top: 1px solid #eee;
-      text-align: center;
+      display:none;
+      padding:14px 16px 16px 16px;
+      border-top:1px solid #eee;
+      text-align:center;
     }
+    .accordion.open .accordion-body { display:block; }
 
-    .accordion.open .accordion-body { display: block; }
+    .live-section { margin-bottom:6px; }
+    .live-label { font-size:16px; font-weight:bold; margin-bottom:4px; }
+    .live-value { font-size:42px; margin:0; }
+    .live-range { font-size:14px; color:#b7b7b7; margin-top:6px; }
+    .timestamp { margin-top:5px; font-size:12px; color:#999; }
 
-    .live-section { margin-bottom: 6px; }
-    .live-label { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+    canvas { max-width:100%; height:260px !important; display:block; margin:10px auto 0 auto; }
 
-    .live-value { font-size: 42px; margin: 0; }
+    .buttons { margin-top:14px; }
+    .buttons button { margin:5px; padding:10px 16px; font-size:14px; cursor:pointer; }
 
-    .live-range {
-      font-size: 14px;
-      color: #b7b7b7;
-      margin-top: 6px;
-    }
-
-    .timestamp {
-      margin-top: 5px;
-      font-size: 12px;
-      color: #999;
-    }
-
-    canvas {
-      max-width: 100%;
-      height: 260px !important;
-      display: block;
-      margin: 10px auto 0 auto;
-    }
-
-    .buttons { margin-top: 14px; }
-    .buttons button {
-      margin: 5px;
-      padding: 10px 16px;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    footer { margin-top: 24px; }
+    footer { margin-top:24px; }
   </style>
 </head>
 
@@ -121,13 +55,11 @@
     <h1>IoT Dewpoint Monitoring</h1>
     <div class="sub-title">PT KALBE FARMA Tbk</div>
 
-    <!-- =================== DRYER 2 (Accordion) =================== -->
+    <!-- DRYER 2 -->
     <div class="accordion" id="acc-d2">
-      <button class="accordion-header" type="button" data-target="acc-d2">
-        <span>Dryer 2</span>
-        <span class="chev">⌄</span>
+      <button class="accordion-header" type="button" data-target="acc-d2" data-dryer="d2">
+        <span>Dryer 2</span><span class="chev">⌄</span>
       </button>
-
       <div class="accordion-body">
         <div class="live-section">
           <div class="live-label">Live Dewpoint:</div>
@@ -146,13 +78,11 @@
       </div>
     </div>
 
-    <!-- =================== DRYER 5 (Accordion) =================== -->
+    <!-- DRYER 5 -->
     <div class="accordion" id="acc-d5">
-      <button class="accordion-header" type="button" data-target="acc-d5">
-        <span>Dryer 5</span>
-        <span class="chev">⌄</span>
+      <button class="accordion-header" type="button" data-target="acc-d5" data-dryer="d5">
+        <span>Dryer 5</span><span class="chev">⌄</span>
       </button>
-
       <div class="accordion-body">
         <div class="live-section">
           <div class="live-label">Live Dewpoint:</div>
@@ -172,7 +102,7 @@
     </div>
 
     <footer>
-      <p style="text-align:center; font-size: 0.85em; color: gray; line-height: 1.6;">
+      <p style="text-align:center; font-size:0.85em; color:gray; line-height:1.6;">
         © 2025 Koner. All rights reserved.<br>
         Customer Service – PT Arjuna Solusi Sejahtera<br>
         Tel: (021) 22524347 · Email:
@@ -182,7 +112,7 @@
   </div>
 
   <script type="module">
-    // ====== PASSCODE ======
+    // ===== PASSCODE =====
     const PASSCODE = "kalbe";
     const input = prompt("PASSCODE");
     if (input !== PASSCODE) {
@@ -190,21 +120,7 @@
       throw new Error("Unauthorized");
     }
 
-    // ====== Accordion behaviour ======
-    function toggleAccordion(id) {
-      const el = document.getElementById(id);
-      const isOpen = el.classList.contains("open");
-      el.classList.toggle("open", !isOpen);
-    }
-
-    document.querySelectorAll(".accordion-header").forEach(btn => {
-      btn.addEventListener("click", () => toggleAccordion(btn.dataset.target));
-    });
-
-    // Optional: auto-open Dryer 2 on load
-    // toggleAccordion("acc-d2");
-
-    // ====== FIREBASE ======
+    // ===== FIREBASE =====
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -218,10 +134,11 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // ====== PATHS (UBAH DI SINI SAJA) ======
+    // ===== PATHS =====
     const DRYER2_PATH = "/koner25012";
     const DRYER5_PATH = "/koner25015";
 
+    // ===== Helpers =====
     function makeChart(canvasId) {
       return new Chart(document.getElementById(canvasId).getContext("2d"), {
         type: "line",
@@ -237,21 +154,13 @@
           }]
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: false,
           scales: {
-            x: {
-              ticks: { color: "#aaa" },
-              grid: { color: "#fff" }
-            },
-            y: {
-              min: -100,
-              max: 20,
-              ticks: { color: "#aaa" },
-              grid: { color: "#ddd" }
-            }
+            x: { ticks: { color: "#aaa" }, grid: { color: "#fff" } },
+            y: { min: -100, max: 20, ticks: { color: "#aaa" }, grid: { color: "#ddd" } }
           },
-          plugins: {
-            legend: { labels: { color: "#ccc" } }
-          }
+          plugins: { legend: { labels: { color: "#ccc" } } }
         }
       });
     }
@@ -273,30 +182,53 @@
       a.click();
     }
 
-    function wireDryer(opts) {
-      const {
-        path,
-        liveValueId,
-        lastUpdatedId,
-        canvasId,
-        btnAllId,
-        btn3dId,
-        btn24hId,
-        filePrefix
-      } = opts;
+    // ===== Lazy init per dryer =====
+    const state = {
+      d2: { inited: false, chart: null, ref: null },
+      d5: { inited: false, chart: null, ref: null }
+    };
 
-      const rootRef = ref(db, path);
+    const dryers = {
+      d2: {
+        path: DRYER2_PATH,
+        liveValueId: "live-value-d2",
+        lastUpdatedId: "last-updated-d2",
+        canvasId: "trend-chart-d2",
+        btnAllId: "download-all-d2",
+        btn3dId: "download-3d-d2",
+        btn24hId: "download-24h-d2",
+        filePrefix: "dryer2"
+      },
+      d5: {
+        path: DRYER5_PATH,
+        liveValueId: "live-value-d5",
+        lastUpdatedId: "last-updated-d5",
+        canvasId: "trend-chart-d5",
+        btnAllId: "download-all-d5",
+        btn3dId: "download-3d-d5",
+        btn24hId: "download-24h-d5",
+        filePrefix: "dryer5"
+      }
+    };
 
-      const liveValueEl = document.getElementById(liveValueId);
-      const lastUpdatedEl = document.getElementById(lastUpdatedId);
+    function initDryer(key) {
+      if (state[key].inited) return;
 
-      const btnAll = document.getElementById(btnAllId);
-      const btn3d = document.getElementById(btn3dId);
-      const btn24h = document.getElementById(btn24hId);
+      const cfg = dryers[key];
+      const rootRef = ref(db, cfg.path);
+      state[key].ref = rootRef;
 
-      const chart = makeChart(canvasId);
+      const liveValueEl = document.getElementById(cfg.liveValueId);
+      const lastUpdatedEl = document.getElementById(cfg.lastUpdatedId);
 
-      // live chart: 20 menit terakhir
+      const btnAll = document.getElementById(cfg.btnAllId);
+      const btn3d = document.getElementById(cfg.btn3dId);
+      const btn24h = document.getElementById(cfg.btn24hId);
+
+      // chart dibuat saat panel SUDAH terbuka
+      const chart = makeChart(cfg.canvasId);
+      state[key].chart = chart;
+
       onValue(rootRef, snapshot => {
         const data = snapshot.val();
         if (!data) return;
@@ -306,12 +238,10 @@
         const cutoff = now - 20 * 60 * 1000;
 
         const filtered = entries.filter(([ts]) => new Date(ts).getTime() >= cutoff);
-
         const labels = filtered.map(([ts]) => {
           const local = new Date(ts);
           return local.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
         });
-
         const values = filtered.map(([, v]) => (v && typeof v === "object" && "value" in v) ? v.value : v);
 
         if (labels.length > 0) {
@@ -332,7 +262,7 @@
         const snap = await get(rootRef);
         const data = snap.val();
         if (!data) return alert("No data to download");
-        downloadCSV(data, `${filePrefix}_all_data.csv`);
+        downloadCSV(data, `${cfg.filePrefix}_all_data.csv`);
       };
 
       btn3d.onclick = async () => {
@@ -342,12 +272,8 @@
 
         const now = Date.now();
         const cutoff = now - 3 * 24 * 60 * 60 * 1000;
-
-        const filtered = Object.fromEntries(
-          Object.entries(data).filter(([ts]) => new Date(ts).getTime() >= cutoff)
-        );
-
-        downloadCSV(filtered, `${filePrefix}_last_3_days.csv`);
+        const filtered = Object.fromEntries(Object.entries(data).filter(([ts]) => new Date(ts).getTime() >= cutoff));
+        downloadCSV(filtered, `${cfg.filePrefix}_last_3_days.csv`);
       };
 
       btn24h.onclick = async () => {
@@ -357,36 +283,45 @@
 
         const now = Date.now();
         const cutoff = now - 24 * 60 * 60 * 1000;
-
-        const filtered = Object.fromEntries(
-          Object.entries(data).filter(([ts]) => new Date(ts).getTime() >= cutoff)
-        );
-
-        downloadCSV(filtered, `${filePrefix}_last_24_hours.csv`);
+        const filtered = Object.fromEntries(Object.entries(data).filter(([ts]) => new Date(ts).getTime() >= cutoff));
+        downloadCSV(filtered, `${cfg.filePrefix}_last_24_hours.csv`);
       };
+
+      state[key].inited = true;
+
+      // Pastikan render setelah open
+      setTimeout(() => {
+        chart.resize();
+        chart.update();
+      }, 50);
     }
 
-    wireDryer({
-      path: DRYER2_PATH,
-      liveValueId: "live-value-d2",
-      lastUpdatedId: "last-updated-d2",
-      canvasId: "trend-chart-d2",
-      btnAllId: "download-all-d2",
-      btn3dId: "download-3d-d2",
-      btn24hId: "download-24h-d2",
-      filePrefix: "dryer2"
+    // ===== Accordion toggle =====
+    function toggleAccordion(id, dryerKey) {
+      const el = document.getElementById(id);
+      const willOpen = !el.classList.contains("open");
+      el.classList.toggle("open", willOpen);
+
+      if (willOpen) {
+        // init saat pertama buka
+        initDryer(dryerKey);
+
+        // kalau sudah ada chart, resize saat dibuka
+        setTimeout(() => {
+          const ch = state[dryerKey].chart;
+          if (ch) { ch.resize(); ch.update(); }
+        }, 50);
+      }
+    }
+
+    document.querySelectorAll(".accordion-header").forEach(btn => {
+      btn.addEventListener("click", () => {
+        toggleAccordion(btn.dataset.target, btn.dataset.dryer);
+      });
     });
 
-    wireDryer({
-      path: DRYER5_PATH,
-      liveValueId: "live-value-d5",
-      lastUpdatedId: "last-updated-d5",
-      canvasId: "trend-chart-d5",
-      btnAllId: "download-all-d5",
-      btn3dId: "download-3d-d5",
-      btn24hId: "download-24h-d5",
-      filePrefix: "dryer5"
-    });
+    // Optional: auto-open Dryer 2 saat load
+    toggleAccordion("acc-d2", "d2");
   </script>
 </body>
 </html>
