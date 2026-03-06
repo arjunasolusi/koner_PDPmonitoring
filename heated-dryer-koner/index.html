@@ -17,22 +17,70 @@
     .label { color: var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; }
     .value { font-size:28px; font-weight:700; margin-top:6px; }
     .ts    { margin-top:12px; color:#9ca3af; font-size:12px; }
-    .chart-wrap { margin-top: 10px; height: 420px; }
-    canvas { width: 100% !important; height: 100% !important; background:#fff; border:1px solid var(--border); border-radius:12px; padding:8px; display:block; }
-    button { padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; cursor:pointer; }
+
+    /* naikkan tinggi chart jadi 1.5x dari 420 = 630 */
+    .chart-wrap { margin-top: 10px; height: 630px; }
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:8px;
+      display:block;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding:8px 10px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      background:#fff;
+      cursor:pointer;
+    }
     button:hover { background:#f8fafc; }
+
+    .controls {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin:10px 0 12px 0;
+      align-items:center;
+    }
+
+    .toggle-group {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .toggle-item {
+      display:flex;
+      align-items:center;
+      gap:6px;
+      border:1px solid var(--border);
+      border-radius:8px;
+      padding:6px 10px;
+      background:#fff;
+      font-size:14px;
+    }
+
+    .dot {
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      display:inline-block;
+    }
   </style>
 
-  <!-- Chart.js + date adapter -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
-  <!-- Firebase (modular SDK) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    // ---- Firebase config (yours) ----
     const firebaseConfig = {
       apiKey: "AIzaSyCAHinoIlJVr2vsyGkCLFB7KQVlPzhUtos",
       authDomain: "koner-dewpoint.firebaseapp.com",
@@ -40,20 +88,25 @@
       projectId: "koner-dewpoint"
     };
 
-    // Constants
     const deviceId = "heateddryer";
-    const TAGS   = ["B1","B2","R1","R2","dew"];
-    // Colors as requested
-    const COLORS = {
-      B1: "#ef4444",  // red
-      B2: "#f59e0b",  // yellow/amber
-      R1: "#16a34a",  // green
-      R2: "#a855f7",  // purple
-      dew:"#2563eb"   // blue
-    };
-    const TAG_AXIS = { B1:"pressure", B2:"pressure", R1:"temp", R2:"temp", dew:"dew" };
+    const TAGS = ["B1","B2","R1","R2","dew"];
 
-    // Sequence map (1..18)
+    const COLORS = {
+      B1: "#ef4444",
+      B2: "#f59e0b",
+      R1: "#16a34a",
+      R2: "#a855f7",
+      dew:"#2563eb"
+    };
+
+    const TAG_AXIS = {
+      B1:"pressure",
+      B2:"pressure",
+      R1:"temp",
+      R2:"temp",
+      dew:"dew"
+    };
+
     const SEQ_MAP = {
        1:"Expansion B2",  2:"Heating B2",  3:"After Heating B2",
        4:"Cooling B2",    5:"After Cooling B2", 6:"Pressurization B2",
@@ -63,15 +116,14 @@
       16:"Standby B2",   17:"Parallel Flow",  18:"Switching to B1"
     };
 
-    // Init
     const app = initializeApp(firebaseConfig);
     const db  = getDatabase(app);
 
-    // --- UI skeleton ---
     const root = document.body;
     root.insertAdjacentHTML("beforeend", `
       <h1>Heated Dryer — Live</h1>
       <div class="subhead">Donaldson HRSL-3500</div>
+
       <div class="grid">
         <div class="card"><div class="label">Pressure A (B1)</div><div id="B1" class="value">—</div></div>
         <div class="card"><div class="label">Pressure B (B2)</div><div id="B2" class="value">—</div></div>
@@ -80,44 +132,86 @@
         <div class="card"><div class="label">Temperature 2 (R2)</div><div id="R2" class="value">—</div></div>
         <div class="card"><div class="label">Sequence</div><div id="seq" class="value">—</div></div>
       </div>
+
       <p class="ts" id="last">Last updated: —</p>
 
       <div style="margin:8px 0 12px 0;">
         <button id="dlcsv">Download streams (CSV)</button>
       </div>
 
-      <div class="chart-wrap"><canvas id="trend"></canvas></div>
+      <div class="controls">
+        <strong style="font-size:14px;">Show graph:</strong>
+        <div class="toggle-group">
+          <label class="toggle-item">
+            <input type="checkbox" class="series-toggle" value="B1" checked>
+            <span class="dot" style="background:#ef4444;"></span> B1
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" class="series-toggle" value="B2" checked>
+            <span class="dot" style="background:#f59e0b;"></span> B2
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" class="series-toggle" value="R1" checked>
+            <span class="dot" style="background:#16a34a;"></span> R1
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" class="series-toggle" value="R2" checked>
+            <span class="dot" style="background:#a855f7;"></span> R2
+          </label>
+          <label class="toggle-item">
+            <input type="checkbox" class="series-toggle" value="dew" checked>
+            <span class="dot" style="background:#2563eb;"></span> dew
+          </label>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="trend"></canvas>
+      </div>
     `);
 
-    // ========== Latest tiles ==========
     const el = Object.fromEntries([...TAGS, "seq", "last"].map(id => [id, document.getElementById(id)]));
-    function setVal(id, val, unit){ el[id].textContent = (val==null || !isFinite(Number(val))) ? "—" : `${val}${unit}`; }
+
+    function setVal(id, val, unit){
+      el[id].textContent = (val==null || !isFinite(Number(val))) ? "—" : `${val}${unit}`;
+    }
+
     async function refreshLatest(){
       const snap = await get(ref(db, `/${deviceId}/latest`));
       if (!snap.exists()) return;
       const v = snap.val();
-      setVal("B1", v.B1, " bar"); setVal("B2", v.B2, " bar");
-      setVal("R1", v.R1, " °C");  setVal("R2", v.R2, " °C");
-      setVal("dew", v.dew, " °Ctd");
-      const seqNum = Number(v.seq);
-      el.seq.textContent = Number.isFinite(seqNum) ? `${seqNum} • ${SEQ_MAP[seqNum] || "Unknown"}` : "—";
-      const ts = toMs(v.ts); el.last.textContent = "Last updated: " + (ts ? new Date(ts).toLocaleString() : "—");
-    }
-    refreshLatest(); setInterval(refreshLatest, 15000);
 
-    // ========== Chart (3 Y-axes, 24h window) ==========
+      setVal("B1", v.B1, " bar");
+      setVal("B2", v.B2, " bar");
+      setVal("R1", v.R1, " °C");
+      setVal("R2", v.R2, " °C");
+      setVal("dew", v.dew, " °Ctd");
+
+      const seqNum = Number(v.seq);
+      el.seq.textContent = Number.isFinite(seqNum)
+        ? `${seqNum} • ${SEQ_MAP[seqNum] || "Unknown"}`
+        : "—";
+
+      const ts = toMs(v.ts);
+      el.last.textContent = "Last updated: " + (ts ? new Date(ts).toLocaleString() : "—");
+    }
+
+    refreshLatest();
+    setInterval(refreshLatest, 15000);
+
     const ctx = document.getElementById("trend").getContext("2d");
+
     const datasets = TAGS.map(t => ({
       label: t,
       borderColor: COLORS[t],
       backgroundColor: COLORS[t],
       data: [],
       borderWidth: 2,
-      tension: 0,                 // straight lines (no wavy)
-      pointRadius: ctx => (ctx.dataset.data && ctx.dataset.data.length < 2 ? 3 : 0),
+      tension: 0,
+      pointRadius: c => (c.dataset.data && c.dataset.data.length < 2 ? 3 : 0),
       pointHoverRadius: 4,
-      yAxisID: TAG_AXIS[t]
-      // no borderDash — all solid
+      yAxisID: TAG_AXIS[t],
+      hidden: false
     }));
 
     const chart = new Chart(ctx, {
@@ -127,53 +221,75 @@
         parsing: false,
         animation: false,
         normalized: true,
-        maintainAspectRatio: false, // respect 420px container
+        maintainAspectRatio: false,
         interaction: { mode: "nearest", intersect: false },
         plugins: {
-          legend: { display: true, position: "top", onClick: () => {} }, // labels only
+          legend: { display: true, position: "top", onClick: () => {} },
           decimation: { enabled: true, algorithm: "lttb" }
         },
         scales: {
-          x: { type: "time", time: { unit: "hour", displayFormats: { hour: "HH:mm" } }, ticks: { autoSkip: true, maxRotation: 0 } },
+          x: {
+            type: "time",
+            time: { unit: "hour", displayFormats: { hour: "HH:mm" } },
+            ticks: { autoSkip: true, maxRotation: 0 }
+          },
           y: { display: false },
 
-          // 8 equal portions each; only pressure draws the grid
           pressure: {
-            type: "linear", position: "left", offset: false,
-            min: 0, max: 16, ticks: { stepSize: 2, color: "#6b7280" },
+            type: "linear",
+            position: "left",
+            offset: false,
+            min: 0,
+            max: 16,
+            ticks: { stepSize: 2, color: "#6b7280" },
             title: { display: true, text: "Pressure (bar)" },
             grid: { color: "rgba(0,0,0,0.06)" }
           },
+
+          /* diubah max dari 200 jadi 250 */
           temp: {
-            type: "linear", position: "left", offset: false,
-            min: 0, max: 200, ticks: { stepSize: 25, color: "#6b7280" },
+            type: "linear",
+            position: "left",
+            offset: false,
+            min: 0,
+            max: 250,
+            ticks: { stepSize: 25, color: "#6b7280" },
             title: { display: true, text: "Temperature (°C)" },
             grid: { drawOnChartArea: false }
           },
+
           dew: {
-            type: "linear", position: "left", offset: false,
-            min: -100, max: 20, ticks: { stepSize: 15, color: "#2563eb" },
+            type: "linear",
+            position: "left",
+            offset: false,
+            min: -100,
+            max: 20,
+            ticks: { stepSize: 15, color: "#2563eb" },
             title: { display: true, text: "Dew Point (°C)" },
             grid: { drawOnChartArea: false }
           }
         }
       }
     });
+
     window.chart = chart;
 
-    // Initial + periodic refresh (5m)
     await loadRange24h();
+
     setInterval(() => {
-      const m = new Date().getMinutes();
-      if ([0,5,10,15,20,25,30,35,40,45,50,55].includes(m) && new Date().getSeconds() < 5) {
+      const now = new Date();
+      const m = now.getMinutes();
+      if ([0,5,10,15,20,25,30,35,40,45,50,55].includes(m) && now.getSeconds() < 5) {
         loadRange24h();
       }
     }, 4000);
+
     window.loadRange24h = loadRange24h;
 
     async function loadRange24h(){
-      const end   = Date.now();
+      const end = Date.now();
       const start = end - 24*60*60*1000;
+
       chart.options.scales.x.min = start;
       chart.options.scales.x.max = end;
 
@@ -185,9 +301,10 @@
           const p = `/${deviceId}/streams/${tag}/m5/${Y}/${M}/${D}`;
           const daySnap = await get(ref(db, p));
           if (!daySnap.exists()) continue;
+
           for (const rec of Object.values(daySnap.val())) {
             const tsMs = toMs(rec.ts);
-            const val  = Number(rec.val ?? rec[tag]);
+            const val = Number(rec.val ?? rec[tag]);
             if (isFinite(tsMs) && isFinite(val) && tsMs >= start && tsMs <= end) {
               series[tag].push({ x: tsMs, y: val });
             }
@@ -195,27 +312,44 @@
         }
         series[tag].sort((a,b)=>a.x - b.x);
       }
-      chart.data.datasets.forEach(ds => ds.data = series[ds.label]);
+
+      chart.data.datasets.forEach(ds => {
+        ds.data = series[ds.label];
+      });
+
       chart.update();
     }
 
-    // ---- Download ALL streams as CSV ----
+    document.querySelectorAll(".series-toggle").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const ds = chart.data.datasets.find(d => d.label === cb.value);
+        if (!ds) return;
+        ds.hidden = !cb.checked;
+        chart.update();
+      });
+    });
+
     document.getElementById("dlcsv").onclick = downloadAllStreamsCSV;
 
     async function downloadAllStreamsCSV(){
       const rowsByTs = Object.create(null);
 
-      // fetch all tags' m5 trees
       const snaps = await Promise.all(
-        TAGS.map(tag => get(ref(db, `/${deviceId}/streams/${tag}/m5`)).then(snap => ({ tag, snap })))
+        TAGS.map(tag =>
+          get(ref(db, `/${deviceId}/streams/${tag}/m5`)).then(snap => ({ tag, snap }))
+        )
       );
 
-      // recursive collector (handles YYYY/MM/DD/HHmm nesting)
       function collect(tag, node){
         if (!node) return;
-        if (Array.isArray(node)) { node.forEach(n => collect(tag, n)); return; }
-        if (typeof node === "object"){
-          if ("ts" in node && ("val" in node || tag in node || "value" in node || "y" in node || "v" in node)){
+
+        if (Array.isArray(node)) {
+          node.forEach(n => collect(tag, n));
+          return;
+        }
+
+        if (typeof node === "object") {
+          if ("ts" in node && ("val" in node || tag in node || "value" in node || "y" in node || "v" in node)) {
             const ts = toMs(node.ts);
             const val = Number(node.val ?? node[tag] ?? node.value ?? node.y ?? node.v);
             if (!Number.isFinite(ts) || !Number.isFinite(val)) return;
@@ -232,7 +366,10 @@
       }
 
       const timestamps = Object.keys(rowsByTs).map(Number).sort((a,b)=>a-b);
-      if (timestamps.length === 0) { alert("No streams data to export."); return; }
+      if (timestamps.length === 0) {
+        alert("No streams data to export.");
+        return;
+      }
 
       const headers = ["ts_iso","ts_ms", ...TAGS];
       const lines = [headers.join(",")];
@@ -245,30 +382,41 @@
 
       const csv = lines.join("\n");
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
       a.href = url;
       a.download = `heateddryer_streams_all_${new Date().toISOString().slice(0,10)}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       URL.revokeObjectURL(url);
 
-      function fmt(n){ return (n==null || !isFinite(n)) ? "" : Number(n.toFixed(3)); }
+      function fmt(n){
+        return (n==null || !isFinite(n)) ? "" : Number(n.toFixed(3));
+      }
     }
 
-    // helpers
     function daysBetween(start, end){
       const out = [];
       const d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
       while (d <= end) {
-        out.push([ String(d.getFullYear()), pad(d.getMonth()+1), pad(d.getDate()) ]);
+        out.push([
+          String(d.getFullYear()),
+          pad(d.getMonth()+1),
+          pad(d.getDate())
+        ]);
         d.setDate(d.getDate()+1);
       }
       return out;
     }
-    function pad(n){ return String(n).padStart(2,"0"); }
+
+    function pad(n){
+      return String(n).padStart(2,"0");
+    }
+
     function toMs(ts){
       if (ts == null) return NaN;
-      if (typeof ts === "number") return ts < 2e10 ? ts*1000 : ts; // seconds → ms
+      if (typeof ts === "number") return ts < 2e10 ? ts*1000 : ts;
       if (typeof ts === "string") return new Date(ts).getTime();
       return NaN;
     }
