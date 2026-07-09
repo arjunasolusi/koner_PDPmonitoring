@@ -54,7 +54,7 @@ button {
 }
 
 .screen { min-height: 100vh; }
-.screen[hidden] { display: none; }
+.screen[hidden] { display: none !important; }
 
 /* ===================== LOGIN ===================== */
 #login-screen {
