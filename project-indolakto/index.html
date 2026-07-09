@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HDC2 Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===================== LOGIN SCREEN ===================== -->
+  <div id="login-screen" class="screen">
+    <div class="login-card">
+      <div class="login-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" width="40" height="40">
+          <rect x="6" y="10" width="14" height="28" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="28" y="10" width="14" height="28" rx="2" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="20" y1="16" x2="28" y2="16" stroke="currentColor" stroke-width="2"/>
+          <line x1="20" y1="32" x2="28" y2="32" stroke="currentColor" stroke-width="2"/>
+          <circle cx="13" cy="32" r="2.2" fill="currentColor"/>
+          <circle cx="35" cy="16" r="2.2" fill="currentColor"/>
+        </svg>
+      </div>
+      <h1>HDC2 Monitor</h1>
+      <p class="login-sub">Masukkan passcode untuk membuka dashboard.</p>
+      <form id="login-form" autocomplete="off">
+        <input type="password" id="passcode-input" placeholder="Passcode" autocomplete="current-password" required>
+        <button type="submit" id="login-btn">Masuk</button>
+      </form>
+      <p id="login-error" class="login-error" role="alert" hidden></p>
+    </div>
+  </div>
+
+  <!-- ===================== DASHBOARD SCREEN ===================== -->
+  <div id="dashboard-screen" class="screen" hidden>
+
+    <!-- Status bar -->
+    <header class="statusbar">
+      <div class="statusbar-left">
+        <span class="brand">HDC2 MONITOR</span>
+      </div>
+      <div class="statusbar-right">
+        <span id="device-status" class="pill pill--offline">
+          <span class="pill-dot"></span>
+          <span id="device-status-text">MENGHUBUNGKAN...</span>
+        </span>
+        <span id="clock" class="clock">--:--:--</span>
+        <button id="logout-btn" class="logout-btn" title="Keluar" aria-label="Keluar">⏻</button>
+      </div>
+    </header>
+
+    <main class="grid">
+
+      <!-- Dewpoint readout -->
+      <section class="panel panel--dewpoint">
+        <div class="panel-label">DEW POINT</div>
+        <div class="dewpoint-value">
+          <span id="dewpoint-num">— —</span><span class="dewpoint-unit">°C</span>
+        </div>
+        <div class="dewpoint-meta">
+          <div><span class="meta-label">Setting</span><span id="dewpoint-setting">—</span></div>
+          <div><span class="meta-label">Range sensor</span><span id="sensor-range">—</span></div>
+        </div>
+        <div id="sensor-fault-banner" class="fault-banner" hidden>⚠ SENSOR FAULT</div>
+      </section>
+
+      <!-- Twin-tower valve schematic (signature element) -->
+      <section class="panel panel--schematic">
+        <div class="panel-label">SKEMA VALVE</div>
+        <svg id="valve-schematic" viewBox="0 0 360 220" class="schematic-svg" aria-label="Skema valve dryer">
+          <!-- Wet air inlet -->
+          <line x1="10" y1="200" x2="90" y2="200" class="pipe"/>
+          <line x1="270" y1="200" x2="350" y2="200" class="pipe"/>
+          <line x1="10" y1="20" x2="90" y2="20" class="pipe"/>
+          <line x1="270" y1="20" x2="350" y2="20" class="pipe"/>
+
+          <!-- Tower 1 -->
+          <rect x="90" y="40" width="70" height="140" rx="8" class="tower"/>
+          <text x="125" y="115" class="tower-label" text-anchor="middle">TOWER 1</text>
+
+          <!-- Tower 2 -->
+          <rect x="200" y="40" width="70" height="140" rx="8" class="tower"/>
+          <text x="235" y="115" class="tower-label" text-anchor="middle">TOWER 2</text>
+
+          <!-- vertical connectors tower1 -->
+          <line x1="125" y1="180" x2="125" y2="200" class="pipe"/>
+          <line x1="125" y1="20" x2="125" y2="40" class="pipe"/>
+          <!-- vertical connectors tower2 -->
+          <line x1="235" y1="180" x2="235" y2="200" class="pipe"/>
+          <line x1="235" y1="20" x2="235" y2="40" class="pipe"/>
+
+          <!-- horizontal manifold -->
+          <line x1="10" y1="200" x2="350" y2="200" class="pipe pipe--faint"/>
+          <line x1="10" y1="20" x2="350" y2="20" class="pipe pipe--faint"/>
+
+          <!-- Y1: Adsorption V1 (bottom, tower1) -->
+          <circle cx="125" cy="200" r="9" class="valve" id="valve-y1"/>
+          <text x="125" y="216" class="valve-label" text-anchor="middle">Y1</text>
+
+          <!-- Y2: Adsorption V2 (bottom, tower2) -->
+          <circle cx="235" cy="200" r="9" class="valve" id="valve-y2"/>
+          <text x="235" y="216" class="valve-label" text-anchor="middle">Y2</text>
+
+          <!-- Y3: Regen V1 (top, tower1) -->
+          <circle cx="125" cy="20" r="9" class="valve" id="valve-y3"/>
+          <text x="125" y="10" class="valve-label" text-anchor="middle">Y3</text>
+
+          <!-- Y4: Regen V2 (top, tower2) -->
+          <circle cx="235" cy="20" r="9" class="valve" id="valve-y4"/>
+          <text x="235" y="10" class="valve-label" text-anchor="middle">Y4</text>
+
+          <!-- Y5: quick pressurization, connecting towers mid -->
+          <line x1="160" y1="110" x2="200" y2="110" class="pipe"/>
+          <circle cx="180" cy="110" r="8" class="valve valve--sm" id="valve-y5"/>
+          <text x="180" y="98" class="valve-label" text-anchor="middle">Y5</text>
+
+          <!-- flow labels -->
+          <text x="50" y="215" class="flow-label">udara basah</text>
+          <text x="310" y="215" class="flow-label" text-anchor="end">udara kering</text>
+        </svg>
+        <div class="valve-legend">
+          <span><i class="dot dot--y" id="legend-y1"></i>Y1 Adsorpsi V1</span>
+          <span><i class="dot dot--y" id="legend-y2"></i>Y2 Adsorpsi V2</span>
+          <span><i class="dot dot--y" id="legend-y3"></i>Y3 Regen V1</span>
+          <span><i class="dot dot--y" id="legend-y4"></i>Y4 Regen V2</span>
+          <span><i class="dot dot--y" id="legend-y5"></i>Y5 Ekualisasi</span>
+        </div>
+      </section>
+
+      <!-- State / cycle info -->
+      <section class="panel panel--state">
+        <div class="panel-label">STATUS SIKLUS</div>
+        <div class="state-row">
+          <span class="meta-label">Dryer state</span>
+          <span id="dryer-state" class="state-value">—</span>
+        </div>
+        <div class="state-row">
+          <span class="meta-label">Cycle selection</span>
+          <span id="cycle-selection">—</span>
+        </div>
+        <div class="state-row">
+          <span class="meta-label">Cycle program</span>
+          <span id="cycle-program">—</span>
+        </div>
+        <div class="state-row">
+          <span class="meta-label">Cycle counter</span>
+          <span id="cycle-counter">—</span>
+        </div>
+        <div class="state-row">
+          <span class="meta-label">Servis berikutnya</span>
+          <span id="service-time">—</span>
+        </div>
+        <div class="badges">
+          <span id="badge-energy" class="badge badge--off">ENERGY SAVING</span>
+          <span id="badge-alarm" class="badge badge--off">ALARM</span>
+        </div>
+      </section>
+
+      <!-- History chart -->
+      <section class="panel panel--history">
+        <div class="panel-label-row">
+          <div class="panel-label">RIWAYAT DEW POINT</div>
+          <div class="range-select" role="group" aria-label="Rentang waktu">
+            <button class="range-btn" data-days="1">24 JAM</button>
+            <button class="range-btn is-active" data-days="7">7 HARI</button>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="history-chart"></canvas>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <span id="last-update">Belum ada data</span>
+    </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/3.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
