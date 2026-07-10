@@ -40,7 +40,7 @@
     <!-- Status bar -->
     <header class="statusbar">
       <div class="statusbar-left">
-        <span class="brand">HDC2 MONITOR</span>
+        <span class="brand">HDC2 MONITOR — PT INDOLAKTO</span>
       </div>
       <div class="statusbar-right">
         <span id="device-status" class="pill pill--offline">
@@ -60,103 +60,78 @@
         <div class="dewpoint-value">
           <span id="dewpoint-num">— —</span><span class="dewpoint-unit">°C</span>
         </div>
+        <div id="last-update" class="last-update-inline">Belum ada data</div>
+
         <div class="dewpoint-meta">
-          <div><span class="meta-label">Setting</span><span id="dewpoint-setting">—</span></div>
           <div><span class="meta-label">Range sensor</span><span id="sensor-range">—</span></div>
         </div>
+
         <div id="sensor-fault-banner" class="fault-banner" hidden>⚠ SENSOR FAULT</div>
+        <div id="alarm-banner" class="fault-banner" hidden>⚠ ALARM AKTIF</div>
+
+        <div class="state-block">
+          <div class="state-row">
+            <span class="meta-label">Dryer state</span>
+            <span id="dryer-state" class="state-value">—</span>
+          </div>
+          <div class="state-row">
+            <span class="meta-label">Cycle selection</span>
+            <span id="cycle-selection">—</span>
+          </div>
+        </div>
       </section>
 
       <!-- Twin-tower valve schematic (signature element) -->
       <section class="panel panel--schematic">
-        <div class="panel-label">SKEMA VALVE</div>
-        <svg id="valve-schematic" viewBox="0 0 360 220" class="schematic-svg" aria-label="Skema valve dryer">
-          <!-- Wet air inlet -->
-          <line x1="10" y1="200" x2="90" y2="200" class="pipe"/>
-          <line x1="270" y1="200" x2="350" y2="200" class="pipe"/>
-          <line x1="10" y1="20" x2="90" y2="20" class="pipe"/>
-          <line x1="270" y1="20" x2="350" y2="20" class="pipe"/>
+        <div class="panel-label-row">
+          <div class="panel-label">SKEMA VALVE</div>
+          <span id="badge-energy-saving" class="badge-chip">ENERGY SAVING</span>
+        </div>
+        <svg id="valve-schematic" viewBox="0 0 260 300" class="schematic-svg" aria-label="Skema valve dryer">
+          <!-- Exhaust: dari puncak kedua tower menyatu ke satu pipa, keluar ke atas -->
+          <line x1="70" y1="60" x2="70" y2="40" class="pipe"/>
+          <line x1="190" y1="60" x2="190" y2="40" class="pipe"/>
+          <line x1="70" y1="40" x2="190" y2="40" class="pipe"/>
+          <line x1="130" y1="40" x2="130" y2="16" class="pipe"/>
+          <polygon points="130,4 123,18 137,18" class="arrowhead"/>
 
           <!-- Tower 1 -->
-          <rect x="90" y="40" width="70" height="140" rx="8" class="tower"/>
-          <text x="125" y="115" class="tower-label" text-anchor="middle">TOWER 1</text>
+          <rect x="35" y="60" width="70" height="150" rx="35" class="tower"/>
+          <text x="70" y="140" class="tower-label" text-anchor="middle">TOWER 1</text>
 
           <!-- Tower 2 -->
-          <rect x="200" y="40" width="70" height="140" rx="8" class="tower"/>
-          <text x="235" y="115" class="tower-label" text-anchor="middle">TOWER 2</text>
+          <rect x="155" y="60" width="70" height="150" rx="35" class="tower"/>
+          <text x="190" y="140" class="tower-label" text-anchor="middle">TOWER 2</text>
 
-          <!-- vertical connectors tower1 -->
-          <line x1="125" y1="180" x2="125" y2="200" class="pipe"/>
-          <line x1="125" y1="20" x2="125" y2="40" class="pipe"/>
-          <!-- vertical connectors tower2 -->
-          <line x1="235" y1="180" x2="235" y2="200" class="pipe"/>
-          <line x1="235" y1="20" x2="235" y2="40" class="pipe"/>
+          <!-- Energy Saving indicator (bukan valve, lampu status) -->
+          <circle cx="130" cy="90" r="8" class="valve valve--sm" id="valve-energy-saving"/>
+          <text x="130" y="106" class="valve-label" text-anchor="middle">ES</text>
 
-          <!-- horizontal manifold -->
-          <line x1="10" y1="200" x2="350" y2="200" class="pipe pipe--faint"/>
-          <line x1="10" y1="20" x2="350" y2="20" class="pipe pipe--faint"/>
+          <!-- Y5: quick pressurization -->
+          <circle cx="130" cy="150" r="8" class="valve valve--sm" id="valve-y5"/>
+          <text x="130" y="166" class="valve-label" text-anchor="middle">Y5</text>
 
-          <!-- Y1: Adsorption V1 (bottom, tower1) -->
-          <circle cx="125" cy="200" r="9" class="valve" id="valve-y1"/>
-          <text x="125" y="216" class="valve-label" text-anchor="middle">Y1</text>
+          <!-- Y3: dari Tower 1 turun ke manifold bawah -->
+          <line x1="70" y1="210" x2="70" y2="255" class="pipe"/>
+          <circle cx="70" cy="235" r="9" class="valve" id="valve-y3"/>
+          <text x="46" y="239" class="valve-label" text-anchor="middle">Y3</text>
 
-          <!-- Y2: Adsorption V2 (bottom, tower2) -->
-          <circle cx="235" cy="200" r="9" class="valve" id="valve-y2"/>
-          <text x="235" y="216" class="valve-label" text-anchor="middle">Y2</text>
+          <!-- Y4: dari Tower 2 turun ke manifold bawah -->
+          <line x1="190" y1="210" x2="190" y2="255" class="pipe"/>
+          <circle cx="190" cy="235" r="9" class="valve" id="valve-y4"/>
+          <text x="214" y="239" class="valve-label" text-anchor="middle">Y4</text>
 
-          <!-- Y3: Regen V1 (top, tower1) -->
-          <circle cx="125" cy="20" r="9" class="valve" id="valve-y3"/>
-          <text x="125" y="10" class="valve-label" text-anchor="middle">Y3</text>
+          <!-- Manifold bawah: Y3 - Y1 - (inlet) - Y2 - Y4 -->
+          <line x1="70" y1="255" x2="190" y2="255" class="pipe"/>
+          <circle cx="110" cy="255" r="9" class="valve" id="valve-y1"/>
+          <text x="110" y="272" class="valve-label" text-anchor="middle">Y1</text>
+          <circle cx="150" cy="255" r="9" class="valve" id="valve-y2"/>
+          <text x="150" y="272" class="valve-label" text-anchor="middle">Y2</text>
 
-          <!-- Y4: Regen V2 (top, tower2) -->
-          <circle cx="235" cy="20" r="9" class="valve" id="valve-y4"/>
-          <text x="235" y="10" class="valve-label" text-anchor="middle">Y4</text>
-
-          <!-- Y5: quick pressurization, connecting towers mid -->
-          <line x1="160" y1="110" x2="200" y2="110" class="pipe"/>
-          <circle cx="180" cy="110" r="8" class="valve valve--sm" id="valve-y5"/>
-          <text x="180" y="98" class="valve-label" text-anchor="middle">Y5</text>
-
-          <!-- flow labels -->
-          <text x="50" y="215" class="flow-label">udara basah</text>
-          <text x="310" y="215" class="flow-label" text-anchor="end">udara kering</text>
+          <!-- Inlet udara basah, panah masuk dari bawah tengah -->
+          <line x1="130" y1="285" x2="130" y2="256" class="pipe"/>
+          <polygon points="130,246 123,260 137,260" class="arrowhead"/>
         </svg>
-        <div class="valve-legend">
-          <span><i class="dot dot--y" id="legend-y1"></i>Y1 Adsorpsi V1</span>
-          <span><i class="dot dot--y" id="legend-y2"></i>Y2 Adsorpsi V2</span>
-          <span><i class="dot dot--y" id="legend-y3"></i>Y3 Regen V1</span>
-          <span><i class="dot dot--y" id="legend-y4"></i>Y4 Regen V2</span>
-          <span><i class="dot dot--y" id="legend-y5"></i>Y5 Ekualisasi</span>
-        </div>
-      </section>
-
-      <!-- State / cycle info -->
-      <section class="panel panel--state">
-        <div class="panel-label">STATUS SIKLUS</div>
-        <div class="state-row">
-          <span class="meta-label">Dryer state</span>
-          <span id="dryer-state" class="state-value">—</span>
-        </div>
-        <div class="state-row">
-          <span class="meta-label">Cycle selection</span>
-          <span id="cycle-selection">—</span>
-        </div>
-        <div class="state-row">
-          <span class="meta-label">Cycle program</span>
-          <span id="cycle-program">—</span>
-        </div>
-        <div class="state-row">
-          <span class="meta-label">Cycle counter</span>
-          <span id="cycle-counter">—</span>
-        </div>
-        <div class="state-row">
-          <span class="meta-label">Servis berikutnya</span>
-          <span id="service-time">—</span>
-        </div>
-        <div class="badges">
-          <span id="badge-energy" class="badge badge--off">ENERGY SAVING</span>
-          <span id="badge-alarm" class="badge badge--off">ALARM</span>
-        </div>
       </section>
 
       <!-- History chart -->
@@ -176,7 +151,9 @@
     </main>
 
     <footer class="footer">
-      <span id="last-update">Belum ada data</span>
+      <p>© 2025 Koner. All rights reserved.</p>
+      <p>Customer Service – PT Arjuna Solusi Sejahtera</p>
+      <p>Tel: (021) 22524347 &middot; Email: sales@arjunasolusi.co.id</p>
     </footer>
   </div>
 

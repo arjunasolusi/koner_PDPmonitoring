@@ -266,6 +266,13 @@ button {
   gap: 3px;
 }
 
+.last-update-inline {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
+
 .meta-label {
   font-size: 11px;
   color: var(--text-muted);
@@ -273,8 +280,7 @@ button {
   letter-spacing: 0.04em;
 }
 
-.dewpoint-meta span:last-child,
-#dryer-state, #cycle-selection, #cycle-program, #cycle-counter, #service-time {
+.dewpoint-meta span:last-child {
   font-family: var(--font-display);
   font-size: 14px;
 }
@@ -291,20 +297,50 @@ button {
   letter-spacing: 0.04em;
 }
 
+.state-block {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
 /* ---- Schematic panel ---- */
 .panel--schematic { grid-row: span 1; }
 
 .schematic-svg {
-  width: 100%;
-  height: auto;
   display: block;
+  width: auto;
+  height: 260px;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .pipe {
   stroke: var(--border);
   stroke-width: 3;
+  fill: none;
 }
 .pipe--faint { stroke: var(--border-soft); stroke-width: 2; }
+
+.arrowhead {
+  fill: var(--border);
+}
+
+.badge-chip {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 5px 10px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  color: var(--text-faint);
+  transition: color 0.4s ease, border-color 0.4s ease, background 0.4s ease;
+}
+
+.badge-chip.is-active {
+  color: var(--accent-amber);
+  border-color: rgba(240,168,60,0.4);
+  background: rgba(240,168,60,0.08);
+}
 
 .tower {
   fill: var(--panel-2);
@@ -332,48 +368,19 @@ button {
   filter: drop-shadow(0 0 6px var(--accent-green));
 }
 
+.valve.is-active-amber {
+  fill: var(--accent-amber);
+  stroke: var(--accent-amber);
+  filter: drop-shadow(0 0 6px var(--accent-amber));
+}
+
 .valve-label {
   fill: var(--text-muted);
   font-family: var(--font-display);
   font-size: 10px;
 }
 
-.flow-label {
-  fill: var(--text-faint);
-  font-family: var(--font-body);
-  font-size: 9px;
-}
-
-.valve-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 16px;
-  margin-top: 12px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.valve-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-faint);
-  display: inline-block;
-  transition: background 0.4s ease, box-shadow 0.4s ease;
-}
-
-.dot.is-active {
-  background: var(--accent-green);
-  box-shadow: 0 0 6px var(--accent-green);
-}
-
-/* ---- State panel ---- */
+/* ---- State (di dalam panel dewpoint) ---- */
 .state-row {
   display: flex;
   align-items: center;
@@ -383,29 +390,13 @@ button {
 }
 .state-row:last-of-type { border-bottom: none; }
 
-.state-value {
+.state-value,
+#cycle-selection {
   color: var(--accent-cyan);
   font-weight: 600;
-}
-
-.badges {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.badge {
   font-family: var(--font-display);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  color: var(--text-faint);
+  font-size: 13px;
 }
-
-.badge--on.badge-amber { color: var(--accent-amber); border-color: rgba(240,168,60,0.4); background: rgba(240,168,60,0.08); }
-.badge--on.badge-red   { color: var(--accent-red); border-color: rgba(240,71,62,0.4); background: rgba(240,71,62,0.08); }
 
 /* ---- History panel ---- */
 .panel--history { grid-column: 1 / -1; }
@@ -440,11 +431,13 @@ button {
 /* ===================== FOOTER ===================== */
 .footer {
   text-align: center;
-  padding: 16px;
+  padding: 20px 16px;
   color: var(--text-faint);
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 11px;
+  line-height: 1.6;
 }
+.footer p { margin: 0; }
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 820px) {

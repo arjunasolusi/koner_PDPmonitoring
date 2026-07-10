@@ -67,17 +67,12 @@ const deviceStatusText = $("device-status-text");
 const clockEl = $("clock");
 
 const dewpointNum = $("dewpoint-num");
-const dewpointSetting = $("dewpoint-setting");
 const sensorRange = $("sensor-range");
 const faultBanner = $("sensor-fault-banner");
+const alarmBanner = $("alarm-banner");
 
 const dryerStateEl = $("dryer-state");
 const cycleSelectionEl = $("cycle-selection");
-const cycleProgramEl = $("cycle-program");
-const cycleCounterEl = $("cycle-counter");
-const serviceTimeEl = $("service-time");
-const badgeEnergy = $("badge-energy");
-const badgeAlarm = $("badge-alarm");
 
 const lastUpdateEl = $("last-update");
 
@@ -155,20 +150,11 @@ const DRYER_STATE_LABELS = {
 
 const CYCLE_SELECTION_LABELS = { 0: "Idle", 1: "Fixed cycle", 2: "Dew point cycle" };
 
-function formatDuration(totalSeconds) {
-  if (totalSeconds == null || isNaN(totalSeconds)) return "—";
-  const s = Math.max(0, Math.floor(totalSeconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}j ${m}m`;
-  if (m > 0) return `${m}m ${sec}d`;
-  return `${sec}d`;
-}
-
 // ------------------------------------------------------------
 //  7. RENDER /latest
 // ------------------------------------------------------------
+let currentSensorRange = null;
+
 function renderLatest(d) {
   if (!d) return;
 
@@ -180,36 +166,35 @@ function renderLatest(d) {
     dewpointNum.textContent = Number(d.dewpoint).toFixed(1);
     faultBanner.hidden = true;
   }
-  dewpointSetting.textContent = d.dewpoint_setting != null ? `${Number(d.dewpoint_setting).toFixed(1)} °C` : "—";
   sensorRange.textContent = d.sensor_range === 1 ? "-100…+20 °C" : "-50…+20 °C";
 
-  // Valves — light up schematic (elemen SVG) + legend dot
+  if (d.sensor_range !== currentSensorRange) {
+    currentSensorRange = d.sensor_range;
+    applyChartYRange(currentSensorRange);
+  }
+
+  // Valves — light up schematic (elemen SVG)
   valveIds.forEach((id) => {
     const on = !!d[id];
     const circle = document.getElementById(`valve-${id}`);
-    const dot = document.getElementById(`legend-${id}`);
     if (circle) circle.classList.toggle("is-active", on);
-    if (dot) dot.classList.toggle("is-active", on);
   });
+
+  // Energy saving — lingkaran ES di skema + badge chip
+  const esCircle = document.getElementById("valve-energy-saving");
+  if (esCircle) esCircle.classList.toggle("is-active-amber", !!d.energy_saving);
+  const esBadge = document.getElementById("badge-energy-saving");
+  if (esBadge) esBadge.classList.toggle("is-active", !!d.energy_saving);
 
   // State
   dryerStateEl.textContent = DRYER_STATE_LABELS[d.dryer_state] ?? `#${d.dryer_state}`;
   cycleSelectionEl.textContent = CYCLE_SELECTION_LABELS[d.cycle_selection] ?? `#${d.cycle_selection}`;
-  cycleProgramEl.textContent = d.cycle_program ?? "—";
-  cycleCounterEl.textContent = d.cycle_counter != null ? `${d.cycle_counter} s` : "—";
-  serviceTimeEl.textContent = formatDuration(d.service_seconds);
 
-  // Badges
-  toggleBadge(badgeEnergy, d.energy_saving, "badge-amber");
-  toggleBadge(badgeAlarm, d.alarm, "badge-red");
+  // Alarm
+  alarmBanner.hidden = !d.alarm;
 
   // Online / last update
   updateOnlineStatus(d.ts);
-}
-
-function toggleBadge(el, on, colorClass) {
-  el.classList.toggle("badge--on", !!on);
-  el.classList.toggle(colorClass, !!on);
 }
 
 function updateOnlineStatus(tsSeconds) {
@@ -269,6 +254,8 @@ function initChart() {
           ticks: { color: "#7C8894", font: { family: "IBM Plex Mono", size: 10 } }
         },
         y: {
+          min: -50,
+          max: 20,
           grid: { color: "#232B33" },
           ticks: { color: "#7C8894", font: { family: "IBM Plex Mono", size: 10 } },
           title: { display: true, text: "°C", color: "#7C8894" }
@@ -286,6 +273,14 @@ function initChart() {
       }
     }
   });
+}
+
+// sensor_range: 0 = -50..+20 °C, 1 = -100..+20 °C (§6 spesifikasi HDC2)
+function applyChartYRange(sensorRange) {
+  if (!historyChart) return;
+  historyChart.options.scales.y.min = sensorRange === 1 ? -100 : -50;
+  historyChart.options.scales.y.max = 20;
+  historyChart.update();
 }
 
 function subscribeHistory(days) {
