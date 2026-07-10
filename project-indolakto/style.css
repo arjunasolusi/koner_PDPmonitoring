@@ -31,6 +31,7 @@ html, body {
   color: var(--text);
   font-family: var(--font-body);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 body {
@@ -152,8 +153,8 @@ button {
 .brand {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 14px;
-  letter-spacing: 0.08em;
+  font-size: 17px;
+  letter-spacing: 0.06em;
 }
 
 .statusbar-right {
@@ -167,9 +168,9 @@ button {
   align-items: center;
   gap: 6px;
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.05em;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 100px;
   border: 1px solid var(--border);
 }
@@ -189,7 +190,7 @@ button {
 
 .clock {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
@@ -224,8 +225,8 @@ button {
 
 .panel-label {
   font-family: var(--font-display);
-  font-size: 11px;
-  letter-spacing: 0.1em;
+  font-size: 13px;
+  letter-spacing: 0.08em;
   color: var(--text-muted);
   margin-bottom: 14px;
 }
@@ -234,6 +235,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 14px;
 }
 
@@ -241,14 +244,14 @@ button {
 .dewpoint-value {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 56px;
+  font-size: 64px;
   line-height: 1;
   color: var(--accent-cyan);
   text-shadow: 0 0 30px rgba(63,198,224,0.25);
 }
 
 .dewpoint-unit {
-  font-size: 22px;
+  font-size: 26px;
   color: var(--text-muted);
   margin-left: 4px;
   font-weight: 400;
@@ -268,13 +271,13 @@ button {
 
 .last-update-inline {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-faint);
   margin-top: 6px;
 }
 
 .meta-label {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -282,7 +285,7 @@ button {
 
 .dewpoint-meta span:last-child {
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .fault-banner {
@@ -291,8 +294,8 @@ button {
   border: 1px solid rgba(240,71,62,0.35);
   color: var(--accent-red);
   font-family: var(--font-display);
-  font-size: 12px;
-  padding: 8px 12px;
+  font-size: 14px;
+  padding: 10px 14px;
   border-radius: 6px;
   letter-spacing: 0.04em;
 }
@@ -308,10 +311,8 @@ button {
 
 .schematic-svg {
   display: block;
-  width: auto;
-  height: 260px;
-  max-width: 100%;
-  margin: 0 auto;
+  width: 100%;
+  height: auto;
 }
 
 .pipe {
@@ -327,9 +328,9 @@ button {
 
 .badge-chip {
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.05em;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 100px;
   border: 1px solid var(--border);
   color: var(--text-faint);
@@ -351,7 +352,7 @@ button {
 .tower-label {
   fill: var(--text-faint);
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.06em;
 }
 
@@ -377,7 +378,8 @@ button {
 .valve-label {
   fill: var(--text-muted);
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* ---- State (di dalam panel dewpoint) ---- */
@@ -385,6 +387,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border-soft);
 }
@@ -395,7 +399,9 @@ button {
   color: var(--accent-cyan);
   font-weight: 600;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 16px;
+  text-align: right;
+  word-break: break-word;
 }
 
 /* ---- History panel ---- */
@@ -411,9 +417,9 @@ button {
   border: 1px solid var(--border);
   color: var(--text-muted);
   font-family: var(--font-display);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.04em;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 100px;
 }
 
@@ -434,8 +440,8 @@ button {
   padding: 20px 16px;
   color: var(--text-faint);
   font-family: var(--font-body);
-  font-size: 11px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.7;
 }
 .footer p { margin: 0; }
 

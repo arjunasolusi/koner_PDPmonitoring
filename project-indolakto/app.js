@@ -251,14 +251,14 @@ function initChart() {
           type: "time",
           time: { unit: currentRangeDays <= 1 ? "hour" : "day" },
           grid: { color: "#232B33" },
-          ticks: { color: "#7C8894", font: { family: "IBM Plex Mono", size: 10 } }
+          ticks: { color: "#7C8894", font: { family: "IBM Plex Mono", size: 12 } }
         },
         y: {
           min: -50,
           max: 20,
           grid: { color: "#232B33" },
-          ticks: { color: "#7C8894", font: { family: "IBM Plex Mono", size: 10 } },
-          title: { display: true, text: "°C", color: "#7C8894" }
+          ticks: { color: "#7C8894", font: { family: "IBM Plex Mono", size: 12 } },
+          title: { display: true, text: "°C", color: "#7C8894", font: { size: 12 } }
         }
       },
       plugins: {
