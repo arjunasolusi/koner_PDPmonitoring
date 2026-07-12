@@ -67,13 +67,20 @@ schemaWrap.innerHTML = `
       <feGaussianBlur stdDeviation="4" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <linearGradient id="grad-half-green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4C5761"/>
+      <stop offset="50%" stop-color="#4C5761"/>
+      <stop offset="50%" stop-color="#4ADE80"/>
+      <stop offset="100%" stop-color="#4ADE80"/>
+    </linearGradient>
   </defs>
 
-  <!-- outlet header -->
+  <!-- outlet header (split into two halves so each side can be colored independently) -->
   <text x="220" y="24" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="1">OUTLET — DRY AIR</text>
-  <line x1="110" y1="40" x2="330" y2="40" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
-  <line x1="110" y1="40" x2="110" y2="60" stroke="#2A333C" stroke-width="8"/>
-  <line x1="330" y1="40" x2="330" y2="60" stroke="#2A333C" stroke-width="8"/>
+  <line id="outlet-B1" x1="110" y1="40" x2="220" y2="40" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
+  <line id="outlet-B2" x1="220" y1="40" x2="330" y2="40" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
+  <line id="outlet-drop-B1" x1="110" y1="40" x2="110" y2="60" stroke="#2A333C" stroke-width="8"/>
+  <line id="outlet-drop-B2" x1="330" y1="40" x2="330" y2="60" stroke="#2A333C" stroke-width="8"/>
 
   <!-- towers -->
   <rect id="tower-B1" x="70" y="60" width="80" height="190" rx="14" fill="#1F2830" stroke="#2A333C" stroke-width="2"/>
@@ -89,9 +96,21 @@ schemaWrap.innerHTML = `
     <polygon points="330,58 323,72 337,72" fill="#4ADE80"/>
   </g>
 
-  <!-- heater coils (behind the status cage) -->
+  <!-- heater coil icon (zigzag) -->
   <path id="heater-B1" d="M85 213 l10 -10 l10 10 l10 -10 l10 10 l10 -10 l10 10" fill="none" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
   <path id="heater-B2" d="M305 213 l10 -10 l10 10 l10 -10 l10 10 l10 -10 l10 10" fill="none" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- cooling coil icon (fins) -->
+  <g id="coolfin-B1" opacity="0">
+    <line x1="85" y1="203" x2="115" y2="203" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+    <line x1="85" y1="211" x2="115" y2="211" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+    <line x1="85" y1="219" x2="115" y2="219" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g id="coolfin-B2" opacity="0">
+    <line x1="305" y1="203" x2="335" y2="203" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+    <line x1="305" y1="211" x2="335" y2="211" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+    <line x1="305" y1="219" x2="335" y2="219" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+  </g>
 
   <!-- status cage: sits on top so text never collides with pipes/arrows -->
   <rect id="cage-B1" x="55" y="120" width="110" height="60" rx="8" fill="#1A2128" stroke="#2A333C" stroke-width="1.5"/>
@@ -103,10 +122,11 @@ schemaWrap.innerHTML = `
   <text id="cageStatus-B1" x="110" y="165" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="0.3">—</text>
   <text id="cageStatus-B2" x="330" y="165" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="0.3">—</text>
 
-  <!-- inlet header -->
-  <line x1="110" y1="250" x2="110" y2="278" stroke="#2A333C" stroke-width="8"/>
-  <line x1="330" y1="250" x2="330" y2="278" stroke="#2A333C" stroke-width="8"/>
-  <line x1="110" y1="278" x2="330" y2="278" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
+  <!-- inlet header (split into two halves) -->
+  <line id="inlet-drop-B1" x1="110" y1="250" x2="110" y2="278" stroke="#2A333C" stroke-width="8"/>
+  <line id="inlet-drop-B2" x1="330" y1="250" x2="330" y2="278" stroke="#2A333C" stroke-width="8"/>
+  <line id="inlet-B1" x1="110" y1="278" x2="220" y2="278" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
+  <line id="inlet-B2" x1="220" y1="278" x2="330" y2="278" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
   <text x="220" y="302" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="1">INLET — COMPRESSED AIR</text>
 
   <circle id="valve-B1" cx="110" cy="278" r="7" fill="#1F2830" stroke="#4C5761" stroke-width="2"/>
@@ -115,15 +135,27 @@ schemaWrap.innerHTML = `
 `;
 
 const sEl = id => document.getElementById(id);
+const GREY = "#4C5761";
+const GREEN = "#4ADE80";
+const GREY_PIPE = "#2A333C";
 
-function classifyStage(label) {
-  if (/Heating/.test(label)) return { color: "#F0473E", short: "HEATING" };
-  if (/Cooling/.test(label)) return { color: "#3FC6E0", short: "COOLING" };
-  if (/Expansion/.test(label)) return { color: "#F0A83C", short: "EXPANSION" };
-  if (/Pressurization/.test(label)) return { color: "#F0A83C", short: "PRESSURIZING" };
-  if (/Standby/.test(label)) return { color: "#4C5761", short: "STANDBY" };
-  if (/Switching/.test(label)) return { color: "#F0A83C", short: "SWITCHING" };
-  return { color: "#7C8894", short: label.toUpperCase() };
+/* one entry per physical step (used twice: once per tower, per half-cycle) */
+function stageOf(label) {
+  if (/After Heating/.test(label)) return { name: "AFTER HEATING", border: "#F0473E", coil: "heat", active: false };
+  if (/Heating/.test(label))       return { name: "HEATING",       border: "#F0473E", coil: "heat", active: true };
+  if (/After Cooling/.test(label)) return { name: "AFTER COOLING", border: "#3FC6E0", coil: "cool", active: false };
+  if (/Cooling/.test(label))       return { name: "COOLING",       border: "#3FC6E0", coil: "cool", active: true };
+  if (/Expansion/.test(label))     return { name: "EXPANSION",     border: "#F0A83C", coil: "heat", active: false };
+  if (/Pressurization/.test(label))return { name: "PRESSURIZING",  border: "url(#grad-half-green)", coil: "heat", active: false };
+  if (/Standby/.test(label))       return { name: "STANDBY",       border: GREY, coil: "heat", active: false };
+  return { name: label.toUpperCase(), border: "#7C8894", coil: "heat", active: false };
+}
+
+function resetCoil(t) {
+  sEl(`heater-${t}`).setAttribute("opacity", "1");
+  sEl(`heater-${t}`).setAttribute("stroke", GREY);
+  sEl(`heater-${t}`).removeAttribute("filter");
+  sEl(`coolfin-${t}`).setAttribute("opacity", "0");
 }
 
 function updateSchema(seqNum) {
@@ -131,67 +163,78 @@ function updateSchema(seqNum) {
 
   if (!label) {
     ["B1", "B2"].forEach(t => {
-      sEl(`tower-${t}`).setAttribute("stroke", "#2A333C");
+      sEl(`tower-${t}`).setAttribute("stroke", GREY_PIPE);
       sEl(`arrow-${t}`).setAttribute("opacity", "0");
-      sEl(`heater-${t}`).setAttribute("stroke", "#4C5761");
-      sEl(`heater-${t}`).removeAttribute("filter");
-      sEl(`cage-${t}`).setAttribute("stroke", "#2A333C");
+      sEl(`cage-${t}`).setAttribute("stroke", GREY_PIPE);
       sEl(`cageStatus-${t}`).textContent = "—";
       sEl(`cageStatus-${t}`).setAttribute("fill", "#7C8894");
       sEl(`valve-${t}`).setAttribute("fill", "#1F2830");
+      resetCoil(t);
+      [`outlet-${t}`, `outlet-drop-${t}`, `inlet-${t}`, `inlet-drop-${t}`].forEach(id => sEl(id).setAttribute("stroke", GREY_PIPE));
     });
     el.cycleBadge.textContent = "—";
     el.cycleBadge.className = "badge";
     return;
   }
 
-  const isParallel = /Parallel Flow/.test(label);
+  const isDualOnline = /Parallel Flow|Switching/.test(label);
   const named = label.match(/B([12])/);
-  const processingTower = named ? `B${named[1]}` : null;
-  const stage = classifyStage(label);
+  const processingTower = (!isDualOnline && named) ? `B${named[1]}` : null;
+  const stage = isDualOnline ? null : stageOf(label);
 
   ["B1", "B2"].forEach(t => {
-    const isProcessing = !isParallel && t === processingTower;
-    const isOnline = isParallel || (!isProcessing);
+    const isProcessing = !isDualOnline && t === processingTower;
+    const isOnline = isDualOnline || !isProcessing;
 
     const towerEl = sEl(`tower-${t}`);
     const arrowEl = sEl(`arrow-${t}`);
-    const heaterEl = sEl(`heater-${t}`);
     const cageEl = sEl(`cage-${t}`);
     const statusEl = sEl(`cageStatus-${t}`);
     const valveEl = sEl(`valve-${t}`);
 
     if (isOnline) {
-      towerEl.setAttribute("stroke", "#4ADE80");
+      towerEl.setAttribute("stroke", GREEN);
       arrowEl.setAttribute("opacity", "1");
-      valveEl.setAttribute("fill", "#4ADE80");
-      cageEl.setAttribute("stroke", "#4ADE80");
-      statusEl.textContent = isParallel ? "PARALLEL FLOW" : "ONLINE / DRYING";
-      statusEl.setAttribute("fill", "#4ADE80");
+      valveEl.setAttribute("fill", GREEN);
+      cageEl.setAttribute("stroke", GREEN);
+      statusEl.textContent = isDualOnline ? label.toUpperCase() : "ADSORPTION";
+      statusEl.setAttribute("fill", GREEN);
+      resetCoil(t);
     } else {
-      towerEl.setAttribute("stroke", stage.color);
+      towerEl.setAttribute("stroke", stage.border);
       arrowEl.setAttribute("opacity", "0");
-      valveEl.setAttribute("fill", stage.color);
-      cageEl.setAttribute("stroke", stage.color);
-      statusEl.textContent = stage.short;
-      statusEl.setAttribute("fill", stage.color);
-    }
+      valveEl.setAttribute("fill", stage.border.startsWith("url") ? GREEN : stage.border);
+      cageEl.setAttribute("stroke", stage.border);
+      statusEl.textContent = stage.name;
+      statusEl.setAttribute("fill", stage.border.startsWith("url") ? GREEN : stage.border);
 
-    if (isProcessing && /Heating/.test(label)) {
-      heaterEl.setAttribute("stroke", "#F0473E");
-      heaterEl.setAttribute("filter", "url(#glow)");
-    } else {
-      heaterEl.setAttribute("stroke", "#4C5761");
-      heaterEl.removeAttribute("filter");
+      if (stage.coil === "cool") {
+        sEl(`heater-${t}`).setAttribute("opacity", "0");
+        sEl(`coolfin-${t}`).setAttribute("opacity", "1");
+        sEl(`coolfin-${t}`).querySelectorAll("line").forEach(l => l.setAttribute("stroke", stage.active ? "#3FC6E0" : GREY));
+        sEl(`coolfin-${t}`).setAttribute("filter", stage.active ? "url(#glow)" : "");
+      } else {
+        sEl(`coolfin-${t}`).setAttribute("opacity", "0");
+        sEl(`heater-${t}`).setAttribute("opacity", "1");
+        sEl(`heater-${t}`).setAttribute("stroke", stage.active ? "#F0473E" : GREY);
+        if (stage.active) sEl(`heater-${t}`).setAttribute("filter", "url(#glow)");
+        else sEl(`heater-${t}`).removeAttribute("filter");
+      }
     }
   });
 
+  /* pipes: green on the side(s) that are currently online/adsorbing */
+  const onlineTowers = isDualOnline ? ["B1", "B2"] : [processingTower === "B1" ? "B2" : "B1"];
+  ["B1", "B2"].forEach(t => {
+    const color = onlineTowers.includes(t) ? GREEN : GREY_PIPE;
+    sEl(`outlet-${t}`).setAttribute("stroke", color);
+    sEl(`outlet-drop-${t}`).setAttribute("stroke", color);
+    sEl(`inlet-${t}`).setAttribute("stroke", color);
+    sEl(`inlet-drop-${t}`).setAttribute("stroke", color);
+  });
+
   el.cycleBadge.textContent = `${seqNum} · ${label}`;
-  el.cycleBadge.className = "badge " + (
-    /Heating/.test(label) ? "is-red" :
-    isParallel ? "is-green" :
-    "is-amber"
-  );
+  el.cycleBadge.className = "badge is-amber";
 }
 
 /* ---------------- live readouts ---------------- */
