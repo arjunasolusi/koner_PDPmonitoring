@@ -10,7 +10,7 @@ const firebaseConfig = {
 
 const deviceId = "heateddryer";
 const TAGS = ["B1", "B2", "R1", "R2", "dew"];
-const OFFLINE_AFTER_MS = 90 * 1000; // pill goes red if /latest hasn't updated in this long
+const OFFLINE_AFTER_MS = 10 * 60 * 1000; // pill goes red if /latest hasn't updated within this window
 
 const COLORS = {
   B1: "#F0473E",
@@ -61,7 +61,7 @@ setInterval(tickClock, 1000);
 /* ---------------- schematic ---------------- */
 const schemaWrap = document.getElementById("schemaWrap");
 schemaWrap.innerHTML = `
-<svg viewBox="0 0 440 300" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 440 330" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
       <feGaussianBlur stdDeviation="4" result="blur"/>
@@ -70,44 +70,47 @@ schemaWrap.innerHTML = `
   </defs>
 
   <!-- outlet header -->
-  <line x1="110" y1="40" x2="330" y2="40" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
-  <line id="pipe-out-B1" x1="110" y1="40" x2="110" y2="58" stroke="#2A333C" stroke-width="8"/>
-  <line id="pipe-out-B2" x1="330" y1="40" x2="330" y2="58" stroke="#2A333C" stroke-width="8"/>
   <text x="220" y="24" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="1">OUTLET — DRY AIR</text>
+  <line x1="110" y1="40" x2="330" y2="40" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
+  <line x1="110" y1="40" x2="110" y2="60" stroke="#2A333C" stroke-width="8"/>
+  <line x1="330" y1="40" x2="330" y2="60" stroke="#2A333C" stroke-width="8"/>
 
   <!-- towers -->
   <rect id="tower-B1" x="70" y="60" width="80" height="190" rx="14" fill="#1F2830" stroke="#2A333C" stroke-width="2"/>
   <rect id="tower-B2" x="290" y="60" width="80" height="190" rx="14" fill="#1F2830" stroke="#2A333C" stroke-width="2"/>
 
-  <!-- heater coils -->
-  <path id="heater-B1" d="M85 190 l10 -10 l10 10 l10 -10 l10 10 l10 -10 l10 10" fill="none" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
-  <path id="heater-B2" d="M305 190 l10 -10 l10 10 l10 -10 l10 10 l10 -10 l10 10" fill="none" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
-
-  <!-- airflow arrows -->
+  <!-- airflow arrows (behind the status cage) -->
   <g id="arrow-B1" opacity="0">
-    <line x1="110" y1="225" x2="110" y2="75" stroke="#4ADE80" stroke-width="3"/>
-    <polygon points="110,62 103,76 117,76" fill="#4ADE80"/>
+    <line x1="110" y1="242" x2="110" y2="68" stroke="#4ADE80" stroke-width="3"/>
+    <polygon points="110,58 103,72 117,72" fill="#4ADE80"/>
   </g>
   <g id="arrow-B2" opacity="0">
-    <line x1="330" y1="225" x2="330" y2="75" stroke="#4ADE80" stroke-width="3"/>
-    <polygon points="330,62 323,76 337,76" fill="#4ADE80"/>
+    <line x1="330" y1="242" x2="330" y2="68" stroke="#4ADE80" stroke-width="3"/>
+    <polygon points="330,58 323,72 337,72" fill="#4ADE80"/>
   </g>
 
-  <text x="110" y="270" text-anchor="middle" fill="#E8EDF2" font-family="IBM Plex Mono" font-weight="600" font-size="14">B1</text>
-  <text x="330" y="270" text-anchor="middle" fill="#E8EDF2" font-family="IBM Plex Mono" font-weight="600" font-size="14">B2</text>
+  <!-- heater coils (behind the status cage) -->
+  <path id="heater-B1" d="M85 213 l10 -10 l10 10 l10 -10 l10 10 l10 -10 l10 10" fill="none" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
+  <path id="heater-B2" d="M305 213 l10 -10 l10 10 l10 -10 l10 10 l10 -10 l10 10" fill="none" stroke="#4C5761" stroke-width="3" stroke-linecap="round"/>
 
-  <text id="tag-B1" x="110" y="286" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="0.5">—</text>
-  <text id="tag-B2" x="330" y="286" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="0.5">—</text>
+  <!-- status cage: sits on top so text never collides with pipes/arrows -->
+  <rect id="cage-B1" x="55" y="120" width="110" height="60" rx="8" fill="#1A2128" stroke="#2A333C" stroke-width="1.5"/>
+  <rect id="cage-B2" x="275" y="120" width="110" height="60" rx="8" fill="#1A2128" stroke="#2A333C" stroke-width="1.5"/>
+
+  <text x="110" y="143" text-anchor="middle" fill="#E8EDF2" font-family="IBM Plex Mono" font-weight="700" font-size="15">B1</text>
+  <text x="330" y="143" text-anchor="middle" fill="#E8EDF2" font-family="IBM Plex Mono" font-weight="700" font-size="15">B2</text>
+
+  <text id="cageStatus-B1" x="110" y="165" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="0.3">—</text>
+  <text id="cageStatus-B2" x="330" y="165" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="0.3">—</text>
 
   <!-- inlet header -->
-  <line id="pipe-in-B1" x1="110" y1="250" x2="110" y2="268" stroke="#2A333C" stroke-width="8"/>
-  <line id="pipe-in-B2" x1="330" y1="250" x2="330" y2="268" stroke="#2A333C" stroke-width="8"/>
-  <line x1="110" y1="268" x2="330" y2="268" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
-  <text x="220" y="292" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="1">INLET — COMPRESSED AIR</text>
+  <line x1="110" y1="250" x2="110" y2="278" stroke="#2A333C" stroke-width="8"/>
+  <line x1="330" y1="250" x2="330" y2="278" stroke="#2A333C" stroke-width="8"/>
+  <line x1="110" y1="278" x2="330" y2="278" stroke="#2A333C" stroke-width="8" stroke-linecap="round"/>
+  <text x="220" y="302" text-anchor="middle" fill="#7C8894" font-family="IBM Plex Mono" font-size="10" letter-spacing="1">INLET — COMPRESSED AIR</text>
 
-  <!-- valves -->
-  <circle id="valve-B1" cx="110" cy="259" r="7" fill="#1F2830" stroke="#4C5761" stroke-width="2"/>
-  <circle id="valve-B2" cx="330" cy="259" r="7" fill="#1F2830" stroke="#4C5761" stroke-width="2"/>
+  <circle id="valve-B1" cx="110" cy="278" r="7" fill="#1F2830" stroke="#4C5761" stroke-width="2"/>
+  <circle id="valve-B2" cx="330" cy="278" r="7" fill="#1F2830" stroke="#4C5761" stroke-width="2"/>
 </svg>
 `;
 
@@ -132,8 +135,9 @@ function updateSchema(seqNum) {
       sEl(`arrow-${t}`).setAttribute("opacity", "0");
       sEl(`heater-${t}`).setAttribute("stroke", "#4C5761");
       sEl(`heater-${t}`).removeAttribute("filter");
-      sEl(`tag-${t}`).textContent = "—";
-      sEl(`tag-${t}`).setAttribute("fill", "#7C8894");
+      sEl(`cage-${t}`).setAttribute("stroke", "#2A333C");
+      sEl(`cageStatus-${t}`).textContent = "—";
+      sEl(`cageStatus-${t}`).setAttribute("fill", "#7C8894");
       sEl(`valve-${t}`).setAttribute("fill", "#1F2830");
     });
     el.cycleBadge.textContent = "—";
@@ -153,21 +157,24 @@ function updateSchema(seqNum) {
     const towerEl = sEl(`tower-${t}`);
     const arrowEl = sEl(`arrow-${t}`);
     const heaterEl = sEl(`heater-${t}`);
-    const tagEl = sEl(`tag-${t}`);
+    const cageEl = sEl(`cage-${t}`);
+    const statusEl = sEl(`cageStatus-${t}`);
     const valveEl = sEl(`valve-${t}`);
 
     if (isOnline) {
       towerEl.setAttribute("stroke", "#4ADE80");
       arrowEl.setAttribute("opacity", "1");
       valveEl.setAttribute("fill", "#4ADE80");
-      tagEl.textContent = isParallel ? "PARALLEL FLOW" : "ONLINE / DRYING";
-      tagEl.setAttribute("fill", "#4ADE80");
+      cageEl.setAttribute("stroke", "#4ADE80");
+      statusEl.textContent = isParallel ? "PARALLEL FLOW" : "ONLINE / DRYING";
+      statusEl.setAttribute("fill", "#4ADE80");
     } else {
       towerEl.setAttribute("stroke", stage.color);
       arrowEl.setAttribute("opacity", "0");
       valveEl.setAttribute("fill", stage.color);
-      tagEl.textContent = stage.short;
-      tagEl.setAttribute("fill", stage.color);
+      cageEl.setAttribute("stroke", stage.color);
+      statusEl.textContent = stage.short;
+      statusEl.setAttribute("fill", stage.color);
     }
 
     if (isProcessing && /Heating/.test(label)) {

@@ -289,6 +289,11 @@ body {
 .chart-wrap { height: 480px; }
 .chart-wrap canvas { width: 100% !important; height: 100% !important; }
 
+@media (max-width: 820px) {
+  .panel--history { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart-wrap { min-width: 760px; }
+}
+
 /* ---------- footer ---------- */
 .footer {
   text-align: center;
