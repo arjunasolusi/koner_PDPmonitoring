@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1140"/>
+<title>AFE INSEVIS Dryer Monitor — Koner</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="vendor/chart.umd.js"></script>
+<script src="vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+  <header class="statusbar">
+    <div class="statusbar__id">
+      <span class="statusbar__device">AFE INSEVIS DRYER MONITOR</span>
+      <span class="statusbar__client">VEHDD Series — Airfilter Engineering</span>
+    </div>
+    <div class="statusbar__right">
+      <span class="pill" id="onlinePill"><span class="dot" id="onlineDot"></span><span id="onlineText">MEMUAT…</span></span>
+      <span class="statusbar__clock" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <section class="panel panel--readout">
+      <div class="readout-primary">
+        <div class="readout-primary__label">Dew Point</div>
+        <div class="readout-primary__value"><span id="dew">—</span><span class="unit">°C</span></div>
+        <div class="readout-primary__ts">Update terakhir: <span id="last">—</span></div>
+      </div>
+
+      <div id="alarmBanner" class="alarm-banner is-hidden">
+        <div class="alarm-banner__head">
+          <span class="alarm-banner__title">⚠ <span id="alarmCount">0</span> Alarm Aktif</span>
+        </div>
+        <div class="alarm-banner__list" id="alarmList"></div>
+      </div>
+
+      <div class="readout-grid">
+        <div class="readout-field">
+          <div class="readout-field__label">Tekanan Vessel 1 (B1)</div>
+          <div class="readout-field__value"><span id="B1">—</span><span class="unit-sm">bar</span></div>
+        </div>
+        <div class="readout-field">
+          <div class="readout-field__label">Tekanan Vessel 2 (B2)</div>
+          <div class="readout-field__value"><span id="B2">—</span><span class="unit-sm">bar</span></div>
+        </div>
+        <div class="readout-field">
+          <div class="readout-field__label">Suhu Heater (R1)</div>
+          <div class="readout-field__value"><span id="R1">—</span><span class="unit-sm">°C</span></div>
+        </div>
+        <div class="readout-field">
+          <div class="readout-field__label">Suhu Akhir Regen (R2)</div>
+          <div class="readout-field__value"><span id="R2">—</span><span class="unit-sm">°C</span></div>
+        </div>
+        <div class="readout-field">
+          <div class="readout-field__label">Suhu Inlet (R3)</div>
+          <div class="readout-field__value"><span id="R3">—</span><span class="unit-sm">°C</span></div>
+        </div>
+        <div class="readout-field">
+          <div class="readout-field__label">Suhu Outlet (R4)</div>
+          <div class="readout-field__value"><span id="R4">—</span><span class="unit-sm">°C</span></div>
+        </div>
+        <div class="readout-field">
+          <div class="readout-field__label">Flow</div>
+          <div class="readout-field__value"><span id="flow">—</span><span class="unit-sm">—</span></div>
+        </div>
+      </div>
+
+      <div class="state-box">
+        <div class="state-box__row">
+          <div class="state-box__label">Vessel Adsorpsi (Online)</div>
+          <div class="state-box__value" id="vesselAdsorb">—</div>
+        </div>
+        <div class="state-box__row">
+          <div class="state-box__label">Vessel Regenerasi</div>
+          <div class="state-box__value" id="vesselRegen">—</div>
+          <div class="state-box__sub" id="regenStage">—</div>
+        </div>
+      </div>
+
+      <div class="chip-row" id="componentChips"></div>
+    </section>
+
+    <section class="panel panel--schema">
+      <div class="panel__head">
+        <span class="panel__title">Skema Twin Vessel</span>
+        <span class="badge is-amber" id="cycleBadge">—</span>
+      </div>
+      <div class="schema-wrap" id="schemaWrap"></div>
+    </section>
+
+    <section class="panel panel--history">
+      <div class="panel__head">
+        <span class="panel__title">Grafik Riwayat</span>
+        <div class="range-toggle">
+          <button class="range-btn is-active" data-hours="24">24 JAM</button>
+          <button class="range-btn" data-hours="168">7 HARI</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle-group" id="seriesToggles"></div>
+        <button id="dlcsv" class="ghost-btn">Unduh CSV</button>
+      </div>
+
+      <div class="chart-wrap"><canvas id="trend"></canvas></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>© 2025 Koner. All rights reserved.</p>
+    <p>Customer Service – PT Arjuna Solusi Sejahtera</p>
+    <p>Tel: (021) 22524347 &middot; Email: sales@arjunasolusi.co.id</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
