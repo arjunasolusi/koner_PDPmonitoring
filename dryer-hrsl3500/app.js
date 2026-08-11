@@ -13,10 +13,10 @@ const TAGS = ["B1", "B2", "R1", "R2", "dew"];
 const OFFLINE_AFTER_MS = 10 * 60 * 1000; // pill goes red if /latest hasn't updated within this window
 
 const COLORS = {
-  B1: "#F0473E",
-  B2: "#F0A83C",
-  R1: "#4ADE80",
-  R2: "#C084FC",
+  B1: "#4ADE80",
+  B2: "#C084FC",
+  R1: "#F0473E",
+  R2: "#F0A83C",
   dew: "#3FC6E0"
 };
 
@@ -67,11 +67,11 @@ schemaWrap.innerHTML = `
       <feGaussianBlur stdDeviation="4" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <linearGradient id="grad-half-green" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="grad-half-cyan" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#4C5761"/>
       <stop offset="50%" stop-color="#4C5761"/>
-      <stop offset="50%" stop-color="#4ADE80"/>
-      <stop offset="100%" stop-color="#4ADE80"/>
+      <stop offset="50%" stop-color="#3FC6E0"/>
+      <stop offset="100%" stop-color="#3FC6E0"/>
     </linearGradient>
   </defs>
 
@@ -88,12 +88,12 @@ schemaWrap.innerHTML = `
 
   <!-- airflow arrows (behind the status cage) -->
   <g id="arrow-B1" opacity="0">
-    <line x1="110" y1="242" x2="110" y2="68" stroke="#4ADE80" stroke-width="3"/>
-    <polygon points="110,58 103,72 117,72" fill="#4ADE80"/>
+    <line x1="110" y1="242" x2="110" y2="68" stroke="#3FC6E0" stroke-width="3"/>
+    <polygon points="110,58 103,72 117,72" fill="#3FC6E0"/>
   </g>
   <g id="arrow-B2" opacity="0">
-    <line x1="330" y1="242" x2="330" y2="68" stroke="#4ADE80" stroke-width="3"/>
-    <polygon points="330,58 323,72 337,72" fill="#4ADE80"/>
+    <line x1="330" y1="242" x2="330" y2="68" stroke="#3FC6E0" stroke-width="3"/>
+    <polygon points="330,58 323,72 337,72" fill="#3FC6E0"/>
   </g>
 
   <!-- heater coil icon (zigzag) -->
@@ -136,17 +136,17 @@ schemaWrap.innerHTML = `
 
 const sEl = id => document.getElementById(id);
 const GREY = "#4C5761";
-const GREEN = "#4ADE80";
+const ONLINE = "#3FC6E0"; // adsorption / online tower — matches primary accent (dewpoint, buttons)
 const GREY_PIPE = "#2A333C";
 
 /* one entry per physical step (used twice: once per tower, per half-cycle) */
 function stageOf(label) {
   if (/After Heating/.test(label)) return { name: "AFTER HEATING", border: "#F0473E", coil: "heat", active: false };
   if (/Heating/.test(label))       return { name: "HEATING",       border: "#F0473E", coil: "heat", active: true };
-  if (/After Cooling/.test(label)) return { name: "AFTER COOLING", border: "#3FC6E0", coil: "cool", active: false };
-  if (/Cooling/.test(label))       return { name: "COOLING",       border: "#3FC6E0", coil: "cool", active: true };
+  if (/After Cooling/.test(label)) return { name: "AFTER COOLING", border: "#3B82F6", coil: "cool", active: false };
+  if (/Cooling/.test(label))       return { name: "COOLING",       border: "#3B82F6", coil: "cool", active: true };
   if (/Expansion/.test(label))     return { name: "EXPANSION",     border: "#F0A83C", coil: "heat", active: false };
-  if (/Pressurization/.test(label))return { name: "PRESSURIZING",  border: "url(#grad-half-green)", coil: "heat", active: false };
+  if (/Pressurization/.test(label))return { name: "PRESSURIZING",  border: "url(#grad-half-cyan)", coil: "heat", active: false };
   if (/Standby/.test(label))       return { name: "STANDBY",       border: GREY, coil: "heat", active: false };
   return { name: label.toUpperCase(), border: "#7C8894", coil: "heat", active: false };
 }
@@ -193,25 +193,25 @@ function updateSchema(seqNum) {
     const valveEl = sEl(`valve-${t}`);
 
     if (isOnline) {
-      towerEl.setAttribute("stroke", GREEN);
+      towerEl.setAttribute("stroke", ONLINE);
       arrowEl.setAttribute("opacity", "1");
-      valveEl.setAttribute("fill", GREEN);
-      cageEl.setAttribute("stroke", GREEN);
+      valveEl.setAttribute("fill", ONLINE);
+      cageEl.setAttribute("stroke", ONLINE);
       statusEl.textContent = isDualOnline ? label.toUpperCase() : "ADSORPTION";
-      statusEl.setAttribute("fill", GREEN);
+      statusEl.setAttribute("fill", ONLINE);
       resetCoil(t);
     } else {
       towerEl.setAttribute("stroke", stage.border);
       arrowEl.setAttribute("opacity", "0");
-      valveEl.setAttribute("fill", stage.border.startsWith("url") ? GREEN : stage.border);
+      valveEl.setAttribute("fill", stage.border.startsWith("url") ? ONLINE : stage.border);
       cageEl.setAttribute("stroke", stage.border);
       statusEl.textContent = stage.name;
-      statusEl.setAttribute("fill", stage.border.startsWith("url") ? GREEN : stage.border);
+      statusEl.setAttribute("fill", stage.border.startsWith("url") ? ONLINE : stage.border);
 
       if (stage.coil === "cool") {
         sEl(`heater-${t}`).setAttribute("opacity", "0");
         sEl(`coolfin-${t}`).setAttribute("opacity", "1");
-        sEl(`coolfin-${t}`).querySelectorAll("line").forEach(l => l.setAttribute("stroke", stage.active ? "#3FC6E0" : GREY));
+        sEl(`coolfin-${t}`).querySelectorAll("line").forEach(l => l.setAttribute("stroke", stage.active ? "#3B82F6" : GREY));
         sEl(`coolfin-${t}`).setAttribute("filter", stage.active ? "url(#glow)" : "");
       } else {
         sEl(`coolfin-${t}`).setAttribute("opacity", "0");
@@ -223,10 +223,10 @@ function updateSchema(seqNum) {
     }
   });
 
-  /* pipes: green on the side(s) that are currently online/adsorbing */
+  /* pipes: cyan on the side(s) that are currently online/adsorbing */
   const onlineTowers = isDualOnline ? ["B1", "B2"] : [processingTower === "B1" ? "B2" : "B1"];
   ["B1", "B2"].forEach(t => {
-    const color = onlineTowers.includes(t) ? GREEN : GREY_PIPE;
+    const color = onlineTowers.includes(t) ? ONLINE : GREY_PIPE;
     sEl(`outlet-${t}`).setAttribute("stroke", color);
     sEl(`outlet-drop-${t}`).setAttribute("stroke", color);
     sEl(`inlet-${t}`).setAttribute("stroke", color);
@@ -310,19 +310,19 @@ const chart = new Chart(ctx, {
       y: { display: false },
       pressure: {
         type: "linear", position: "left", offset: false, min: 0, max: 16,
-        ticks: { stepSize: 2, color: "#F0A83C", font: { family: "IBM Plex Mono", size: 10 } },
+        ticks: { stepSize: 2, color: "#4ADE80", font: { family: "IBM Plex Mono", size: 10 } },
         title: { display: true, text: "Tekanan (bar)", color: "#7C8894", font: { size: 10 } },
         grid: { color: "#232B33" }
       },
       temp: {
         type: "linear", position: "left", offset: false, min: 0, max: 250,
-        ticks: { stepSize: 25, color: "#4ADE80", font: { family: "IBM Plex Mono", size: 10 } },
+        ticks: { stepSize: 25, color: "#F0473E", font: { family: "IBM Plex Mono", size: 10 } },
         title: { display: true, text: "Suhu (°C)", color: "#7C8894", font: { size: 10 } },
         grid: { drawOnChartArea: false }
       },
       dew: {
-        type: "linear", position: "left", offset: false, min: -100, max: 20,
-        ticks: { stepSize: 15, color: "#3FC6E0", font: { family: "IBM Plex Mono", size: 10 } },
+        type: "linear", position: "left", offset: false, min: -100, max: 30,
+        ticks: { stepSize: 10, color: "#3FC6E0", font: { family: "IBM Plex Mono", size: 10 } },
         title: { display: true, text: "Dew Point (°C)", color: "#7C8894", font: { size: 10 } },
         grid: { drawOnChartArea: false }
       }
