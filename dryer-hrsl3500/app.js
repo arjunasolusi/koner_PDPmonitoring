@@ -139,17 +139,43 @@ const GREY = "#4C5761";
 const ONLINE = "#3FC6E0"; // adsorption / online tower — matches primary accent (dewpoint, buttons)
 const GREY_PIPE = "#2A333C";
 
-/* one entry per physical step (used twice: once per tower, per half-cycle) */
-function stageOf(label) {
-  if (/After Heating/.test(label)) return { name: "AFTER HEATING", border: "#F0473E", coil: "heat", active: false };
-  if (/Heating/.test(label))       return { name: "HEATING",       border: "#F0473E", coil: "heat", active: true };
-  if (/After Cooling/.test(label)) return { name: "AFTER COOLING", border: "#3B82F6", coil: "cool", active: false };
-  if (/Cooling/.test(label))       return { name: "COOLING",       border: "#3B82F6", coil: "cool", active: true };
-  if (/Expansion/.test(label))     return { name: "EXPANSION",     border: "#F0A83C", coil: "heat", active: false };
-  if (/Pressurization/.test(label))return { name: "PRESSURIZING",  border: "url(#grad-half-cyan)", coil: "heat", active: false };
-  if (/Standby/.test(label))       return { name: "STANDBY",       border: GREY, coil: "heat", active: false };
-  return { name: label.toUpperCase(), border: "#7C8894", coil: "heat", active: false };
-}
+/* Explicit per-step config, NOT derived from the device's label text.
+   The label text (SEQ_MAP) is unreliable for telling us which tower is
+   "processing" vs "online" — at the Standby steps (7 & 16) the label names
+   the ONLINE tower ("Standby B1"), not the regenerating one, which would
+   flip the adsorption indicator a full 2 steps too early if we parsed it
+   naively. The adsorption/online tower must stay pinned for the whole
+   half-cycle and only hand off at the Switching step. */
+const STEP_CONFIG = {
+   1: { processing: "B2", stage: "Expansion" },
+   2: { processing: "B2", stage: "Heating" },
+   3: { processing: "B2", stage: "After Heating" },
+   4: { processing: "B2", stage: "Cooling" },
+   5: { processing: "B2", stage: "After Cooling" },
+   6: { processing: "B2", stage: "Pressurization" },
+   7: { processing: "B2", stage: "Standby" },
+   8: { dual: true },
+   9: { dual: true },
+  10: { processing: "B1", stage: "Expansion" },
+  11: { processing: "B1", stage: "Heating" },
+  12: { processing: "B1", stage: "After Heating" },
+  13: { processing: "B1", stage: "Cooling" },
+  14: { processing: "B1", stage: "After Cooling" },
+  15: { processing: "B1", stage: "Pressurization" },
+  16: { processing: "B1", stage: "Standby" },
+  17: { dual: true },
+  18: { dual: true }
+};
+
+const STAGE_STYLE = {
+  "Expansion":      { name: "EXPANSION",      border: "#F0A83C",             coil: "heat", active: false },
+  "Heating":        { name: "HEATING",        border: "#F0473E",             coil: "heat", active: true },
+  "After Heating":  { name: "AFTER HEATING",  border: "#F0473E",             coil: "heat", active: false },
+  "Cooling":        { name: "COOLING",        border: "#3B82F6",             coil: "cool", active: true },
+  "After Cooling":  { name: "AFTER COOLING",  border: "#3B82F6",             coil: "cool", active: false },
+  "Pressurization": { name: "PRESSURIZING",   border: "url(#grad-half-cyan)",coil: "heat", active: false },
+  "Standby":        { name: "STANDBY",        border: GREY,                  coil: "heat", active: false }
+};
 
 function resetCoil(t) {
   sEl(`heater-${t}`).setAttribute("opacity", "1");
@@ -160,8 +186,9 @@ function resetCoil(t) {
 
 function updateSchema(seqNum) {
   const label = SEQ_MAP[seqNum] || null;
+  const config = STEP_CONFIG[seqNum] || null;
 
-  if (!label) {
+  if (!label || !config) {
     ["B1", "B2"].forEach(t => {
       sEl(`tower-${t}`).setAttribute("stroke", GREY_PIPE);
       sEl(`arrow-${t}`).setAttribute("opacity", "0");
@@ -177,10 +204,9 @@ function updateSchema(seqNum) {
     return;
   }
 
-  const isDualOnline = /Parallel Flow|Switching/.test(label);
-  const named = label.match(/B([12])/);
-  const processingTower = (!isDualOnline && named) ? `B${named[1]}` : null;
-  const stage = isDualOnline ? null : stageOf(label);
+  const isDualOnline = !!config.dual;
+  const processingTower = isDualOnline ? null : config.processing;
+  const stage = isDualOnline ? null : STAGE_STYLE[config.stage];
 
   ["B1", "B2"].forEach(t => {
     const isProcessing = !isDualOnline && t === processingTower;
