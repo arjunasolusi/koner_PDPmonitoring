@@ -432,32 +432,32 @@ document.querySelectorAll(".series-toggle").forEach(cb => {
 document.getElementById("dlcsv").onclick = downloadAllStreamsCSV;
 
 async function downloadAllStreamsCSV() {
+  // Mengikuti rentang yang lagi aktif di toggle grafik (24 JAM / 7 HARI),
+  // bukan seluruh histori — jadi hasilnya konsisten dengan apa yang lagi
+  // ditampilkan di layar.
+  const end = Date.now();
+  const start = end - currentRangeHours * 60 * 60 * 1000;
+  const days = daysBetween(new Date(start), new Date(end));
   const rowsByTs = Object.create(null);
 
-  const snaps = await Promise.all(
-    TAGS.map(tag => get(ref(db, `/${deviceId}/streams/${tag}/m5`)).then(snap => ({ tag, snap })))
-  );
-
-  function collect(tag, node) {
-    if (!node) return;
-    if (Array.isArray(node)) { node.forEach(n => collect(tag, n)); return; }
-    if (typeof node === "object") {
-      if ("ts" in node && ("val" in node || tag in node || "value" in node || "y" in node || "v" in node)) {
-        const ts = toMs(node.ts);
-        const val = Number(node.val ?? node[tag] ?? node.value ?? node.y ?? node.v);
-        if (!Number.isFinite(ts) || !Number.isFinite(val)) return;
+  for (const tag of TAGS) {
+    for (const [Y, M, D] of days) {
+      const p = `/${deviceId}/streams/${tag}/m5/${Y}/${M}/${D}`;
+      const daySnap = await get(ref(db, p));
+      if (!daySnap.exists()) continue;
+      for (const rec of Object.values(daySnap.val())) {
+        const ts = toMs(rec.ts);
+        const val = Number(rec.val ?? rec[tag]);
+        if (!Number.isFinite(ts) || !Number.isFinite(val)) continue;
+        if (ts < start || ts > end) continue;
         if (!rowsByTs[ts]) rowsByTs[ts] = { ts_ms: ts };
         rowsByTs[ts][tag] = val;
-        return;
       }
-      for (const child of Object.values(node)) collect(tag, child);
     }
   }
 
-  for (const { tag, snap } of snaps) { if (snap.exists()) collect(tag, snap.val()); }
-
   const timestamps = Object.keys(rowsByTs).map(Number).sort((a, b) => a - b);
-  if (timestamps.length === 0) { alert("Tidak ada data streams untuk diekspor."); return; }
+  if (timestamps.length === 0) { alert("Tidak ada data streams untuk diekspor pada rentang ini."); return; }
 
   const headers = ["ts_iso", "ts_ms", ...TAGS];
   const lines = [headers.join(",")];
@@ -472,7 +472,7 @@ async function downloadAllStreamsCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `heateddryer_streams_all_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `heateddryer_streams_${currentRangeHours}h_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
