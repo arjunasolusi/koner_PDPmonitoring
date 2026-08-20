@@ -5,8 +5,8 @@
   --border: #2A333C;
   --border-soft: #232B33;
   --text: #E8EDF2;
-  --text-muted: #7C8894;
-  --text-faint: #4C5761;
+  --text-muted: #A1B1C0;
+  --text-faint: #63717E;
 
   --accent-cyan: #3FC6E0;
   --accent-cyan-dim: #1F5C68;
@@ -62,7 +62,7 @@ body {
 .statusbar__right { display: flex; align-items: center; gap: 14px; }
 .statusbar__clock {
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 16px;
   color: var(--text-muted);
 }
 
@@ -115,7 +115,7 @@ body {
 }
 .panel__title {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.08em;
   color: var(--text-muted);
   text-transform: uppercase;
