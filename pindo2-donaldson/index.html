@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1200"/>
+<title>HRSL-3500 — Process Mimic</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="vendor/chart.umd.js"></script>
+<script src="vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+  <header class="nameplate">
+    <div class="nameplate__id">
+      <span class="nameplate__eyebrow">Tag No.</span>
+      <span class="nameplate__tag">HRSL-3500</span>
+      <span class="nameplate__desc">Donaldson twin-tower heated desiccant dryer — Pindo Deli 2</span>
+    </div>
+    <div class="nameplate__status">
+      <span class="lamp-group">
+        <span class="lamp" id="onlineLamp"></span>
+        <span id="onlineText">MEMUAT</span>
+      </span>
+      <span class="nameplate__clock" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="deck">
+
+    <section class="panel mimic-panel">
+      <div class="panel__head">
+        <span class="panel__title">P&amp;ID — Twin Tower</span>
+        <span class="panel__step" id="cycleBadge">—</span>
+      </div>
+      <div class="mimic" id="schemaWrap"></div>
+    </section>
+
+    <aside class="meter-rail">
+      <div class="panel meter-hero">
+        <div class="meter-hero__label">Dew Point</div>
+        <div class="meter-hero__face">
+          <span id="dew">—</span><span class="meter-hero__unit">°CTD</span>
+        </div>
+        <div class="meter-hero__scale">
+          <div class="meter-hero__track"><div class="meter-hero__marker" id="dewMarker"></div></div>
+          <div class="meter-hero__ticks"><span>-100</span><span>-35</span><span>30</span></div>
+        </div>
+        <div class="meter-hero__ts">Update terakhir <span id="last">—</span></div>
+      </div>
+
+      <div class="panel bargraphs">
+        <div class="bar" data-tag="B1">
+          <div class="bar__head"><span class="bar__label">B1 · Tekanan A</span><span class="bar__value"><span id="B1">—</span><span class="bar__unit">bar</span></span></div>
+          <div class="bar__track"><div class="bar__fill" id="B1-fill"></div></div>
+          <div class="bar__scale"><span>0</span><span>16</span></div>
+        </div>
+        <div class="bar" data-tag="B2">
+          <div class="bar__head"><span class="bar__label">B2 · Tekanan B</span><span class="bar__value"><span id="B2">—</span><span class="bar__unit">bar</span></span></div>
+          <div class="bar__track"><div class="bar__fill" id="B2-fill"></div></div>
+          <div class="bar__scale"><span>0</span><span>16</span></div>
+        </div>
+        <div class="bar" data-tag="R1">
+          <div class="bar__head"><span class="bar__label">R1 · Suhu Heater</span><span class="bar__value"><span id="R1">—</span><span class="bar__unit">°C</span></span></div>
+          <div class="bar__track"><div class="bar__fill" id="R1-fill"></div></div>
+          <div class="bar__scale"><span>0</span><span>250</span></div>
+        </div>
+        <div class="bar" data-tag="R2">
+          <div class="bar__head"><span class="bar__label">R2 · Suhu Regen</span><span class="bar__value"><span id="R2">—</span><span class="bar__unit">°C</span></span></div>
+          <div class="bar__track"><div class="bar__fill" id="R2-fill"></div></div>
+          <div class="bar__scale"><span>0</span><span>250</span></div>
+        </div>
+      </div>
+
+      <div class="panel state-tag">
+        <div class="state-tag__label">Sequence Aktif</div>
+        <div class="state-tag__value" id="seqName">—</div>
+        <div class="state-tag__sub">Step <span id="seqNum">—</span> / 18</div>
+      </div>
+    </aside>
+
+    <section class="panel trend-panel">
+      <div class="panel__head">
+        <span class="panel__title">Strip Chart — Riwayat</span>
+        <div class="range-toggle">
+          <button class="range-btn is-active" data-hours="24">24 JAM</button>
+          <button class="range-btn" data-hours="168">7 HARI</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle-group">
+          <label class="toggle-item"><input type="checkbox" class="series-toggle" value="B1" checked><span class="tdot" style="background:#8FAF7A;"></span>B1</label>
+          <label class="toggle-item"><input type="checkbox" class="series-toggle" value="B2" checked><span class="tdot" style="background:#A98FBF;"></span>B2</label>
+          <label class="toggle-item"><input type="checkbox" class="series-toggle" value="R1" checked><span class="tdot" style="background:#C07A4C;"></span>R1</label>
+          <label class="toggle-item"><input type="checkbox" class="series-toggle" value="R2" checked><span class="tdot" style="background:#6E93B8;"></span>R2</label>
+          <label class="toggle-item"><input type="checkbox" class="series-toggle" value="dew" checked><span class="tdot" style="background:#8FC5D6;"></span>dew</label>
+        </div>
+        <button id="dlcsv" class="ghost-btn">Unduh CSV</button>
+      </div>
+
+      <div class="chart-wrap"><canvas id="trend"></canvas></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>© 2025 Koner. All rights reserved.</p>
+    <p>Customer Service – PT Arjuna Solusi Sejahtera</p>
+    <p>Tel: (021) 22524347 &middot; Email: sales@arjunasolusi.co.id</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
