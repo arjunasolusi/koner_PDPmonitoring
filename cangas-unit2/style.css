@@ -1,0 +1,251 @@
+:root {
+  --bg: #0F1419;
+  --panel: #1A2128;
+  --panel-2: #1F2830;
+  --border: #2A333C;
+  --border-soft: #232B33;
+  --text: #E8EDF2;
+  --text-muted: #7C8894;
+  --text-faint: #4C5761;
+
+  --accent-cyan: #3FC6E0;
+  --accent-cyan-dim: #1F5C68;
+  --accent-green: #4ADE80;
+  --accent-green-dim: #1F5C3E;
+  --accent-amber: #F0A83C;
+  --accent-amber-dim: #5C4319;
+  --accent-red: #F0473E;
+  --accent-red-dim: #5C1F1B;
+
+  --font-display: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+/* ---------- status bar ---------- */
+.statusbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(15, 20, 25, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-soft);
+}
+.statusbar__device {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  display: block;
+}
+.statusbar__client {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.statusbar__right { display: flex; align-items: center; gap: 14px; }
+.statusbar__clock {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--text-faint);
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+  transition: background .3s, box-shadow .3s;
+}
+.dot.is-online { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+.dot.is-offline { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+/* ---------- layout ---------- */
+/* Single column (opsi A) -- device ini tidak punya panel skema, jadi tidak
+   ada alasan pakai grid 2 kolom (1fr : 1.4fr) seperti dashboard lain. */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.panel__title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* ---------- readout triplet (Purity / Pressure / Flow sejajar) ---------- */
+.panel--readout-wide {
+  padding: 28px 24px 22px;
+}
+
+.triplet {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.triplet__item {
+  text-align: center;
+}
+
+.triplet__label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.triplet__value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.triplet__value .unit-sm {
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* Purity = metrik utama (representasi kesehatan generator N2) -- lebih
+   besar & warna aksen utama, tapi Pressure/Flow tetap sejajar setara,
+   bukan diperkecil jadi kartu pendukung seperti pola dryer. */
+.triplet__item--main .triplet__value {
+  font-size: 64px;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 20px rgba(63, 198, 224, 0.35);
+}
+.triplet__item--main .triplet__value .unit-sm { font-size: 22px; }
+
+.triplet__item--side .triplet__value {
+  font-size: 42px;
+  color: var(--text);
+}
+.triplet__item--side .triplet__value .unit-sm { font-size: 16px; }
+
+/* Pressure & Flow diberi warna berbeda supaya gampang dikenali di grafik
+   riwayat juga (COLORS di app.js dicocokkan dengan warna ini). */
+#pressure { color: var(--accent-amber); }
+#flow { color: var(--accent-green); }
+
+.triplet__ts {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* ---------- history panel ---------- */
+.range-toggle { display: flex; gap: 6px; }
+.range-btn {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.range-btn.is-active { color: var(--bg); background: var(--accent-cyan); border-color: var(--accent-cyan); }
+.range-btn:hover:not(.is-active) { color: var(--text); }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.toggle-group { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--panel-2);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+}
+.toggle-item input { accent-color: var(--accent-cyan); }
+.tdot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+
+.ghost-btn {
+  font-family: var(--font-display);
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.ghost-btn:hover { color: var(--accent-cyan); border-color: var(--accent-cyan-dim); }
+
+.chart-wrap { height: 420px; }
+.chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* ---------- footer ---------- */
+.footer {
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 24px 20px 32px;
+  line-height: 1.6;
+}

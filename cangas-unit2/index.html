@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=1000"/>
+<title>CanGas N2 Generator Monitor — Koner</title>
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="vendor/chart.umd.js"></script>
+<script src="vendor/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+  <header class="statusbar">
+    <div class="statusbar__id">
+      <span class="statusbar__device">CANGAS N2 GENERATOR UNIT 2</span>
+      <span class="statusbar__client">PT Tifico Fiber Indonesia Tbk</span>
+    </div>
+    <div class="statusbar__right">
+      <span class="pill" id="onlinePill"><span class="dot" id="onlineDot"></span><span id="onlineText">MEMUAT…</span></span>
+      <span class="statusbar__clock" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <!-- Tidak ada panel skema (opsi A) -- device ini cuma 3 nilai analog,
+         tidak ada status/valve bit yang bisa digambarkan (lihat catatan
+         di app.js). Panel readout full-width sebagai gantinya. -->
+    <section class="panel panel--readout-wide">
+      <div class="triplet">
+        <div class="triplet__item triplet__item--side">
+          <div class="triplet__label">Pressure</div>
+          <div class="triplet__value">
+            <span id="pressure">—</span><span class="unit-sm" id="pressureUnit">—</span>
+          </div>
+        </div>
+
+        <div class="triplet__item triplet__item--main">
+          <div class="triplet__label">Purity N2</div>
+          <div class="triplet__value">
+            <span id="purity">—</span><span class="unit-sm">%</span>
+          </div>
+        </div>
+
+        <div class="triplet__item triplet__item--side">
+          <div class="triplet__label">Flow</div>
+          <div class="triplet__value">
+            <span id="flow">—</span><span class="unit-sm" id="flowUnit">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="triplet__ts">Update terakhir: <span id="last">—</span></div>
+    </section>
+
+    <section class="panel panel--history">
+      <div class="panel__head">
+        <span class="panel__title">Grafik Riwayat</span>
+        <div class="range-toggle">
+          <button class="range-btn is-active" data-hours="24">24 JAM</button>
+          <button class="range-btn" data-hours="168">7 HARI</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="toggle-group" id="seriesToggles"></div>
+        <button id="dlcsv" class="ghost-btn">Unduh CSV</button>
+      </div>
+
+      <div class="chart-wrap"><canvas id="trend"></canvas></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>© 2025 Koner. All rights reserved.</p>
+    <p>Customer Service – PT Arjuna Solusi Sejahtera</p>
+    <p>Tel: (021) 22524347 &middot; Email: sales@arjunasolusi.co.id</p>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
