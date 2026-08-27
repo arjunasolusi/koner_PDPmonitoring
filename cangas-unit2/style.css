@@ -126,11 +126,22 @@ body {
   padding: 28px 24px 22px;
 }
 
+/* Purity berdiri sendiri di baris atas -- posisinya otomatis selalu
+   center karena tidak ada elemen lain sejajar yang bisa menggesernya
+   (beda dari versi sebelumnya, Pressure/Flow di kiri-kanan bikin Purity
+   ketarik ke salah satu sisi kalau lebar teksnya beda jauh). */
 .triplet {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.triplet__side-row {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 40px;
+  gap: 48px;
   flex-wrap: wrap;
 }
 
@@ -182,8 +193,8 @@ body {
 .triplet__ts {
   margin-top: 20px;
   text-align: center;
-  font-size: 12px;
-  color: var(--text-faint);
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 /* ---------- history panel ---------- */

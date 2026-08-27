@@ -29,13 +29,6 @@
          di app.js). Panel readout full-width sebagai gantinya. -->
     <section class="panel panel--readout-wide">
       <div class="triplet">
-        <div class="triplet__item triplet__item--side">
-          <div class="triplet__label">Pressure</div>
-          <div class="triplet__value">
-            <span id="pressure">—</span><span class="unit-sm" id="pressureUnit">—</span>
-          </div>
-        </div>
-
         <div class="triplet__item triplet__item--main">
           <div class="triplet__label">Purity N2</div>
           <div class="triplet__value">
@@ -43,10 +36,19 @@
           </div>
         </div>
 
-        <div class="triplet__item triplet__item--side">
-          <div class="triplet__label">Flow</div>
-          <div class="triplet__value">
-            <span id="flow">—</span><span class="unit-sm" id="flowUnit">—</span>
+        <div class="triplet__side-row">
+          <div class="triplet__item triplet__item--side">
+            <div class="triplet__label">Pressure</div>
+            <div class="triplet__value">
+              <span id="pressure">—</span><span class="unit-sm" id="pressureUnit">—</span>
+            </div>
+          </div>
+
+          <div class="triplet__item triplet__item--side">
+            <div class="triplet__label">Flow</div>
+            <div class="triplet__value">
+              <span id="flow">—</span><span class="unit-sm" id="flowUnit">—</span>
+            </div>
           </div>
         </div>
       </div>
