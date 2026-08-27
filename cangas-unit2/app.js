@@ -27,10 +27,9 @@ const COLORS = {
 };
 const TAG_AXIS = { purity: "purity", pressure: "pressure", flow: "flow" };
 
-// Desimal tampilan per field. Purity 3 desimal (sesuai presisi dokumen,
-// mis. 98.386%). Pressure/flow 2 desimal -- ini pilihan default, gampang
-// diubah kalau ternyata field aslinya perlu presisi beda.
-const DECIMALS = { purity: 3, pressure: 2, flow: 2 };
+// Desimal fixed untuk pressure/flow -- ini pilihan default, gampang diubah.
+// Purity TIDAK pakai ini lagi, lihat formatPurity() di bawah.
+const DECIMALS = { pressure: 2, flow: 2 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
@@ -43,6 +42,37 @@ const el = Object.fromEntries(
 function setVal(id, val, decimals) {
   const n = Number(val);
   el[id].textContent = (val == null || !isFinite(n)) ? "—" : n.toFixed(decimals);
+}
+
+// Purity: desimal adaptif, bukan fixed. Mulai dari 1 digit di belakang
+// koma; selama digit yang baru ditampilkan itu '9', tambah 1 digit lagi
+// (sampai batas maxDecimals). Ini truncate (potong), BUKAN round --
+// sengaja, supaya tidak pernah kejadian "99.9997" dibulatkan jadi
+// "100.000" gara-gara carry dari toFixed(). Konsekuensinya nilai yang
+// ditampilkan bisa sedikit lebih rendah dari nilai asli (mis. 99.99969
+// tampil "99.9996"), tapi itu jauh lebih jujur daripada kelihatan
+// menyentuh 100% padahal belum.
+//
+// Contoh: 99.993 -> "99.993" (berhenti di digit '3')
+//         99.9994 -> "99.9994" (berhenti di digit '4')
+//         99.999997 -> "99.999997" (mentok di batas 6 digit)
+function formatPurity(value, minDecimals = 1, maxDecimals = 6) {
+  const n = Number(value);
+  if (value == null || !isFinite(n)) return "—";
+
+  // toFixed(10) dulu sebagai sumber digit "mentah" -- 10 desimal jauh di
+  // atas maxDecimals (6), jadi resiko carry dari toFixed ini sendiri tidak
+  // akan sampai mempengaruhi digit yang benar-benar kita tampilkan.
+  const full = n.toFixed(10);
+  const dot = full.indexOf(".");
+  const intPart = full.slice(0, dot);
+  const decPart = full.slice(dot + 1);
+
+  let cut = Math.min(minDecimals, decPart.length);
+  while (cut < maxDecimals && cut < decPart.length && decPart[cut - 1] === "9") {
+    cut++;
+  }
+  return `${intPart}.${decPart.slice(0, cut)}`;
 }
 
 function toMs(ts) {
@@ -65,7 +95,7 @@ async function refreshLatest() {
   if (!snap.exists()) return;
   const v = snap.val();
 
-  setVal("purity", v.purity, DECIMALS.purity);
+  el.purity.textContent = formatPurity(v.purity);
   setVal("pressure", v.pressure, DECIMALS.pressure);
   setVal("flow", v.flow, DECIMALS.flow);
 
