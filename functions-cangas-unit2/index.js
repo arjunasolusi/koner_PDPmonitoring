@@ -32,7 +32,7 @@ initializeApp();
 
 // Ganti angka ini kalau retensi mau diubah (mis. 12 untuk 1 tahun).
 // Efeknya baru terasa di run berikutnya -- tidak perlu migrasi data.
-const RETENTION_MONTHS = 6;
+const RETENTION_MONTHS = 12;
 
 const DEVICE_ID = "tifico-cangas-unit2";
 const TAGS = ["purity", "pressure", "flow"];
