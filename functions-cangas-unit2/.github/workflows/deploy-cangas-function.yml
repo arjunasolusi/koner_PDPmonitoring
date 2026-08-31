@@ -1,0 +1,38 @@
+name: Deploy CanGas Cleanup Function
+
+# Jalan cuma kalau ada perubahan di folder functions-cangas-unit2/ --
+# supaya push ke bagian lain repo (dashboard, dryer-hrsl3500, dst)
+# tidak ikut trigger deploy fungsi ini.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functions-cangas-unit2/**"
+      - ".github/workflows/deploy-cangas-function.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: functions-cangas-unit2
+        run: npm install
+
+      - name: Write service account key
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KONER_DEWPOINT }}' > ${{ github.workspace }}/gcp-key.json
+
+      - name: Deploy (scoped ke 1 fungsi -- TIDAK PERNAH pakai --force)
+        working-directory: functions-cangas-unit2
+        run: |
+          npx firebase-tools deploy \
+            --only functions:cangasCleanupOldStreams \
+            --project koner-dewpoint \
+            --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/gcp-key.json
