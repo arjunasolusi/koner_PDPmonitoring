@@ -14,11 +14,17 @@ const firebaseConfig = {
 const deviceId = "tifico-cangas-unit2";
 const TAGS = ["purity", "pressure", "flow"];
 
-// Device ini cuma 3 nilai analog -- tidak ada status/alarm bit yang
-// teridentifikasi di ladder PLC (lihat CanGas_Unit2_Summary.md §6), jadi
-// tidak ada panel skema/status seperti dashboard dryer. /latest cukup flat,
-// tidak perlu dipecah A/B/C seperti afe-insevis.
-const OFFLINE_AFTER_MS = 3 * 60 * 1000; // 3x LATEST_MS firmware (asumsi ~1 menit)
+// Firmware V2: /latest tiap 10s, /streams capture tiap 1 menit (path "m1").
+// OFFLINE_AFTER_MS = 3x interval kirim /latest yang baru (10s), BUKAN lagi
+// berbasis interval lama (60s) -- device dianggap offline jauh lebih cepat
+// sekarang (30s vs sebelumnya 3 menit). Ini konsekuensi yang disengaja dari
+// firmware mengirim lebih sering.
+const OFFLINE_AFTER_MS = 3 * 10 * 1000;
+
+// CSV export dibatasi 3 bulan terakhir (bukan seluruh histori) -- data
+// sekarang 1-menit granularity dengan retensi 12 bulan di server, fetch
+// "semua" akan sangat berat. Lihat downloadAllStreamsCSV() di bawah.
+const CSV_LOOKBACK_DAYS = 90;
 
 const COLORS = {
   purity: "#3FC6E0",   // cyan -- metrik utama
@@ -52,17 +58,10 @@ function setVal(id, val, decimals) {
 // ditampilkan bisa sedikit lebih rendah dari nilai asli (mis. 99.99969
 // tampil "99.9996"), tapi itu jauh lebih jujur daripada kelihatan
 // menyentuh 100% padahal belum.
-//
-// Contoh: 99.993 -> "99.993" (berhenti di digit '3')
-//         99.9994 -> "99.9994" (berhenti di digit '4')
-//         99.999997 -> "99.999997" (mentok di batas 6 digit)
 function formatPurity(value, minDecimals = 1, maxDecimals = 6) {
   const n = Number(value);
   if (value == null || !isFinite(n)) return "—";
 
-  // toFixed(10) dulu sebagai sumber digit "mentah" -- 10 desimal jauh di
-  // atas maxDecimals (6), jadi resiko carry dari toFixed ini sendiri tidak
-  // akan sampai mempengaruhi digit yang benar-benar kita tampilkan.
   const full = n.toFixed(10);
   const dot = full.indexOf(".");
   const intPart = full.slice(0, dot);
@@ -198,6 +197,13 @@ function pad(n) { return String(n).padStart(2, "0"); }
 
 let currentRangeHours = 24;
 
+// Cache data mentah (1-menit) hasil fetch terakhir -- dipakai ulang saat
+// user ganti resolusi tampilan (3/5/10 menit), TIDAK fetch ulang ke
+// Firebase. Resolusi cuma soal AGREGASI DI BROWSER, bukan sumber data
+// yang beda -- firmware selalu kirim 1-menit, dashboard yang meratakan.
+let rawSeriesCache = Object.fromEntries(TAGS.map(t => [t, []]));
+let currentResolutionMinutes = 1;
+
 async function loadRange(hours) {
   currentRangeHours = hours;
   const end = Date.now();
@@ -212,7 +218,7 @@ async function loadRange(hours) {
 
   for (const tag of TAGS) {
     for (const [Y, M, D] of days) {
-      const p = `/${deviceId}/streams/${tag}/m5/${Y}/${M}/${D}`;
+      const p = `/${deviceId}/streams/${tag}/m1/${Y}/${M}/${D}`;
       const daySnap = await get(ref(db, p));
       if (!daySnap.exists()) continue;
       for (const rec of Object.values(daySnap.val())) {
@@ -226,7 +232,32 @@ async function loadRange(hours) {
     series[tag].sort((a, b) => a.x - b.x);
   }
 
-  chart.data.datasets.forEach(ds => { ds.data = series[ds.label]; });
+  rawSeriesCache = series;
+  applyResolution(); // render dengan resolusi yang sedang dipilih
+}
+
+// Ratakan titik 1-menit jadi bucket N-menit (rata-rata per bucket).
+// resolutionMinutes=1 berarti tampil apa adanya, tanpa agregasi.
+function aggregateSeries(points, resolutionMinutes) {
+  if (resolutionMinutes <= 1 || points.length === 0) return points;
+  const bucketMs = resolutionMinutes * 60 * 1000;
+  const buckets = new Map();
+  for (const p of points) {
+    const bucketX = Math.floor(p.x / bucketMs) * bucketMs;
+    if (!buckets.has(bucketX)) buckets.set(bucketX, { sum: 0, count: 0 });
+    const b = buckets.get(bucketX);
+    b.sum += p.y;
+    b.count++;
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([x, b]) => ({ x, y: b.sum / b.count }));
+}
+
+function applyResolution() {
+  chart.data.datasets.forEach(ds => {
+    ds.data = aggregateSeries(rawSeriesCache[ds.label] || [], currentResolutionMinutes);
+  });
   chart.update();
 }
 
@@ -234,17 +265,30 @@ await loadRange(24);
 
 setInterval(() => {
   const now = new Date();
-  const m = now.getMinutes();
-  if ([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].includes(m) && now.getSeconds() < 5) {
+  if (now.getSeconds() < 5) {
     loadRange(currentRangeHours);
   }
 }, 4000);
 
-document.querySelectorAll(".range-btn").forEach(btn => {
+// Toggle rentang waktu (24 JAM / 7 HARI) -- di-scope ke container
+// .range-toggle supaya tidak ke-pick tombol resolusi tampilan di bawah,
+// yang juga pakai class .range-btn untuk gaya visual yang sama.
+document.querySelectorAll(".range-toggle .range-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("is-active"));
+    document.querySelectorAll(".range-toggle .range-btn").forEach(b => b.classList.remove("is-active"));
     btn.classList.add("is-active");
     loadRange(Number(btn.dataset.hours));
+  });
+});
+
+// Toggle resolusi tampilan (1/3/5/10 MENIT) -- ini MURNI tampilan, cuma
+// meratakan data yang sudah ada di rawSeriesCache, tidak fetch ulang.
+document.querySelectorAll(".resolution-toggle .range-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".resolution-toggle .range-btn").forEach(b => b.classList.remove("is-active"));
+    btn.classList.add("is-active");
+    currentResolutionMinutes = Number(btn.dataset.minutes);
+    applyResolution();
   });
 });
 
@@ -257,36 +301,33 @@ document.querySelectorAll(".series-toggle").forEach(cb => {
   });
 });
 
-/* ---------------- CSV export ---------------- */
+/* ---------------- CSV export (dibatasi 3 bulan terakhir) ---------------- */
 document.getElementById("dlcsv").onclick = downloadAllStreamsCSV;
 
 async function downloadAllStreamsCSV() {
+  const end = new Date();
+  const start = new Date(end.getTime() - CSV_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const days = daysBetween(start, end);
+
   const rowsByTs = Object.create(null);
 
-  const snaps = await Promise.all(
-    TAGS.map(tag => get(ref(db, `/${deviceId}/streams/${tag}/m5`)).then(snap => ({ tag, snap })))
-  );
-
-  function collect(tag, node) {
-    if (!node) return;
-    if (Array.isArray(node)) { node.forEach(n => collect(tag, n)); return; }
-    if (typeof node === "object") {
-      if ("ts" in node && ("val" in node || tag in node || "value" in node || "y" in node || "v" in node)) {
-        const ts = toMs(node.ts);
-        const val = Number(node.val ?? node[tag] ?? node.value ?? node.y ?? node.v);
-        if (!Number.isFinite(ts) || !Number.isFinite(val)) return;
+  for (const tag of TAGS) {
+    for (const [Y, M, D] of days) {
+      const p = `/${deviceId}/streams/${tag}/m1/${Y}/${M}/${D}`;
+      const daySnap = await get(ref(db, p));
+      if (!daySnap.exists()) continue;
+      for (const rec of Object.values(daySnap.val())) {
+        const ts = toMs(rec.ts);
+        const val = Number(rec.val ?? rec[tag]);
+        if (!Number.isFinite(ts) || !Number.isFinite(val)) continue;
         if (!rowsByTs[ts]) rowsByTs[ts] = { ts_ms: ts };
         rowsByTs[ts][tag] = val;
-        return;
       }
-      for (const child of Object.values(node)) collect(tag, child);
     }
   }
 
-  for (const { tag, snap } of snaps) { if (snap.exists()) collect(tag, snap.val()); }
-
   const timestamps = Object.keys(rowsByTs).map(Number).sort((a, b) => a - b);
-  if (timestamps.length === 0) { alert("Tidak ada data streams untuk diekspor."); return; }
+  if (timestamps.length === 0) { alert(`Tidak ada data streams dalam ${CSV_LOOKBACK_DAYS} hari terakhir untuk diekspor.`); return; }
 
   const headers = ["ts_iso", "ts_ms", ...TAGS];
   const lines = [headers.join(",")];
@@ -301,7 +342,7 @@ async function downloadAllStreamsCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `tifico-cangas-unit2_streams_all_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `tifico-cangas-unit2_streams_${CSV_LOOKBACK_DAYS}d_${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();

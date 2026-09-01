@@ -221,6 +221,19 @@ body {
   gap: 10px;
   margin-bottom: 12px;
 }
+
+.resolution-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.resolution-toggle__label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-right: 2px;
+}
 .toggle-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .toggle-item {
   display: flex;
