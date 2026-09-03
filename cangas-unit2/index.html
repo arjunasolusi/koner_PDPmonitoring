@@ -40,14 +40,14 @@
           <div class="triplet__item triplet__item--side">
             <div class="triplet__label">Pressure</div>
             <div class="triplet__value">
-              <span id="pressure">—</span><span class="unit-sm" id="pressureUnit">—</span>
+              <span id="pressure">—</span><span class="unit-sm" id="pressureUnit">bar</span>
             </div>
           </div>
 
           <div class="triplet__item triplet__item--side">
             <div class="triplet__label">Flow</div>
             <div class="triplet__value">
-              <span id="flow">—</span><span class="unit-sm" id="flowUnit">—</span>
+              <span id="flow">—</span><span class="unit-sm" id="flowUnit">Nm³/hr</span>
             </div>
           </div>
         </div>
@@ -71,16 +71,19 @@
         <!-- Murni tampilan: meratakan data 10-detik yang sudah di-fetch
              jadi bucket lebih kasar di browser, TIDAK fetch ulang ke
              Firebase. Data mentah tetap selalu 10 detik di server. -->
-        <div class="resolution-toggle">
-          <span class="resolution-toggle__label">Tampilkan tiap:</span>
-          <button class="range-btn is-active" data-seconds="10">10 DETIK</button>
-          <button class="range-btn" data-seconds="60">1 MENIT</button>
-          <button class="range-btn" data-seconds="180">3 MENIT</button>
-          <button class="range-btn" data-seconds="300">5 MENIT</button>
-          <button class="range-btn" data-seconds="600">10 MENIT</button>
+        <div class="resolution-select-wrap">
+          <label for="resolutionSelect" class="resolution-toggle__label">Tampilkan tiap:</label>
+          <select id="resolutionSelect" class="resolution-select">
+            <option value="10">10 detik</option>
+            <option value="30">30 detik</option>
+            <option value="60">1 menit</option>
+            <option value="300">5 menit</option>
+            <option value="600">10 menit</option>
+            <option value="900">15 menit</option>
+          </select>
         </div>
 
-        <button id="dlcsv" class="ghost-btn">Unduh CSV (30 hari terakhir)</button>
+        <button id="dlcsv" class="ghost-btn">Unduh CSV (7 hari terakhir)</button>
       </div>
 
       <div class="chart-wrap"><canvas id="trend"></canvas></div>

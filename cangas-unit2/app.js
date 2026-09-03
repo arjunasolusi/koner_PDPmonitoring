@@ -19,10 +19,12 @@ const TAGS = ["purity", "pressure", "flow"];
 // bukan lagi 3 pohon data terpisah seperti V2 (path "m1" per tag).
 const OFFLINE_AFTER_MS = 3 * 7 * 1000; // 3x LATEST_MS firmware (7s) = 21s
 
-// Retensi backend sekarang 30 hari (Cloud Function cangasCleanupOldStreams,
-// lihat functions-cangas/index.js) -- CSV dibatasi sama, download lebih
-// dari itu percuma karena datanya sudah tidak ada lagi di server.
-const CSV_LOOKBACK_DAYS = 30;
+// Retensi backend tetap 30 hari (Cloud Function cangasCleanupOldStreams,
+// tidak berubah) -- ini cuma window default tombol download CSV manual
+// di dashboard, sengaja dibuat lebih pendek (7 hari) supaya file yang
+// diunduh tidak kebesaran untuk pemakaian sehari-hari. Auto-email CSV
+// (functions-cangas-unit2/index.js) juga independen, tetap 14 hari.
+const CSV_LOOKBACK_DAYS = 7;
 
 const COLORS = {
   purity: "#3FC6E0",   // cyan -- metrik utama
@@ -149,35 +151,66 @@ const chart = new Chart(ctx, {
         ticks: { autoSkip: true, maxRotation: 0, color: "#7C8894", font: { family: "IBM Plex Mono", size: 10 } },
         grid: { color: "#232B33" }
       },
-      // Purity: fixed range 99-100% (keputusan eksplisit -- rentang
-      // operasional yang diharapkan bergerak di 99.99xx). CATATAN: kalau
-      // nilai riil sempat turun di bawah 99% (mis. saat startup), garisnya
-      // akan terpotong di bawah axis, bukan sekadar terlihat flat -- ini
-      // sudah dikonfirmasi & disengaja, bukan default aman dari saya.
+      // Purity: axis DINAMIS -- min/max dihitung dari rentang data yang
+      // sedang tampil (lihat computePurityRange() + loadRange()), supaya
+      // variasi super kecil (mis. 99.9995-99.9999) tetap kelihatan jelas,
+      // bukan kepampat jadi 1 titik. Nilai di sini cuma default awal
+      // sebelum data pertama masuk -- selalu di-override tiap loadRange().
       purity: {
         type: "linear", position: "left", offset: false, min: 99, max: 100,
-        ticks: { stepSize: 0.2, color: COLORS.purity, font: { family: "IBM Plex Mono", size: 10 } },
+        ticks: { color: COLORS.purity, font: { family: "IBM Plex Mono", size: 10 } },
         title: { display: true, text: "Purity (%)", color: "#7C8894", font: { size: 10 } },
         grid: { color: "#232B33" }
       },
-      // Pressure & flow: AUTO-SCALE sengaja, bukan fixed. Satuan & scaling
-      // (/1000, ikut asumsi dari purity) belum divalidasi dengan data
-      // riil -- lihat CanGas_Unit2_Summary.md §4 & §6.
+      // Pressure: FIXED 0-10 bar -- ini rentang sensor resmi (bukan
+      // dugaan), tidak perlu dinamis.
       pressure: {
-        type: "linear", position: "right", offset: false,
-        ticks: { color: COLORS.pressure, font: { family: "IBM Plex Mono", size: 10 } },
-        title: { display: true, text: "Pressure (belum ada unit)", color: "#7C8894", font: { size: 10 } },
+        type: "linear", position: "right", offset: false, min: 0, max: 10,
+        ticks: { stepSize: 2, color: COLORS.pressure, font: { family: "IBM Plex Mono", size: 10 } },
+        title: { display: true, text: "Pressure (bar)", color: "#7C8894", font: { size: 10 } },
         grid: { drawOnChartArea: false }
       },
+      // Flow: min FIXED 0 (fisik, tidak mungkin negatif), max baseline
+      // 300 Nm³/hr (rentang sensor resmi) TAPI melebar otomatis kalau ada
+      // data yang lebih tinggi dari itu -- lihat computeDynamicMax() +
+      // loadRange(). Kalau tidak ada data di atas 300, axis tetap di 300.
       flow: {
-        type: "linear", position: "right", offset: false,
+        type: "linear", position: "right", offset: false, min: 0, max: 300,
         ticks: { color: COLORS.flow, font: { family: "IBM Plex Mono", size: 10 } },
-        title: { display: true, text: "Flow (belum ada unit)", color: "#7C8894", font: { size: 10 } },
+        title: { display: true, text: "Flow (Nm³/hr)", color: "#7C8894", font: { size: 10 } },
         grid: { drawOnChartArea: false }
       }
     }
   }
 });
+
+// Purity: hitung min/max axis dari rentang data yang benar-benar ada,
+// dikasih padding supaya tidak mepet ke tepi (dan tidak collapse jadi
+// garis lurus kalau datanya nyaris konstan). Dibatasi max 100 (fisik,
+// purity tidak mungkin lewat 100%).
+function computePurityRange(points) {
+  if (!points || points.length === 0) return { min: 99, max: 100 };
+  let dataMin = Infinity, dataMax = -Infinity;
+  for (const p of points) {
+    if (p.y < dataMin) dataMin = p.y;
+    if (p.y > dataMax) dataMax = p.y;
+  }
+  const span = dataMax - dataMin;
+  const padding = Math.max(span * 0.25, 0.0005);
+  let min = Math.max(dataMin - padding, 0);
+  let max = Math.min(dataMax + padding, 100);
+  if (max - min < 0.001) max = Math.min(min + 0.001, 100); // safety floor
+  return { min, max };
+}
+
+// Flow: max dinamis -- baseline 300, melebar kalau ada data lebih tinggi
+// (dengan headroom ~10%, dibulatkan ke kelipatan 50 biar tick rapi).
+function computeDynamicMax(points, baseline, headroomRatio = 0.1, roundTo = 50) {
+  if (!points || points.length === 0) return baseline;
+  const dataMax = points.reduce((m, p) => Math.max(m, p.y), -Infinity);
+  if (dataMax <= baseline) return baseline;
+  return Math.ceil((dataMax * (1 + headroomRatio)) / roundTo) * roundTo;
+}
 
 function daysBetween(start, end) {
   const out = [];
@@ -229,6 +262,16 @@ async function loadRange(hours) {
   TAGS.forEach(t => series[t].sort((a, b) => a.x - b.x));
 
   rawSeriesCache = series;
+
+  // Axis dinamis: dihitung ulang tiap kali data baru masuk (ganti rentang
+  // waktu, atau refresh berkala) -- lihat penjelasan trade-off di chat.
+  const purityRange = computePurityRange(series.purity);
+  chart.options.scales.purity.min = purityRange.min;
+  chart.options.scales.purity.max = purityRange.max;
+
+  chart.options.scales.flow.max = computeDynamicMax(series.flow, 300);
+  // flow.min tetap 0, tidak pernah diubah (fisik, tidak mungkin negatif)
+
   applyResolution();
 }
 
@@ -277,16 +320,12 @@ document.querySelectorAll(".range-toggle .range-btn").forEach(btn => {
   });
 });
 
-// Toggle resolusi tampilan (10 DETIK / 1 / 3 / 5 / 10 MENIT) -- MURNI
-// tampilan, cuma meratakan data yang sudah ada di rawSeriesCache, tidak
-// fetch ulang. data-seconds di HTML: 10, 60, 180, 300, 600.
-document.querySelectorAll(".resolution-toggle .range-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".resolution-toggle .range-btn").forEach(b => b.classList.remove("is-active"));
-    btn.classList.add("is-active");
-    currentResolutionSeconds = Number(btn.dataset.seconds);
-    applyResolution();
-  });
+// Toggle resolusi tampilan -- SEKARANG DROPDOWN (bukan deretan tombol,
+// supaya tidak penuh kesamping). Tetap MURNI tampilan, cuma meratakan
+// data yang sudah ada di rawSeriesCache, tidak fetch ulang.
+document.getElementById("resolutionSelect").addEventListener("change", (e) => {
+  currentResolutionSeconds = Number(e.target.value);
+  applyResolution();
 });
 
 document.querySelectorAll(".series-toggle").forEach(cb => {

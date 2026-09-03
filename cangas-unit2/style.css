@@ -222,18 +222,28 @@ body {
   margin-bottom: 12px;
 }
 
-.resolution-toggle {
+.resolution-select-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 .resolution-toggle__label {
   font-family: var(--font-display);
   font-size: 11px;
   color: var(--text-faint);
-  margin-right: 2px;
 }
+.resolution-select {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.resolution-select:hover { border-color: var(--accent-cyan-dim); }
+.resolution-select:focus { outline: none; border-color: var(--accent-cyan); }
 .toggle-group { display: flex; flex-wrap: wrap; gap: 8px; }
 .toggle-item {
   display: flex;
