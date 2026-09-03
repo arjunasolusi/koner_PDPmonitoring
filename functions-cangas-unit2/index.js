@@ -160,7 +160,7 @@ async function buildCsv(db, periodDays) {
 
 exports.cangasSendBiweeklyCsv = onSchedule(
   {
-    schedule: "every day 04:00", // jam beda dari cleanup, supaya tidak rebutan resource
+    schedule: "every day 08:00", // jam kerja pagi -- diubah dari 04:00 (terlalu pagi)
     timeZone: "Asia/Jakarta",
     region: "asia-southeast1",
     secrets: [smtpPassword],
