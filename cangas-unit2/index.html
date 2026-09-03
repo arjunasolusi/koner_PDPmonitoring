@@ -68,18 +68,19 @@
       <div class="controls">
         <div class="toggle-group" id="seriesToggles"></div>
 
-        <!-- Murni tampilan: meratakan data 1-menit yang sudah di-fetch
-             jadi bucket 3/5/10 menit di browser, TIDAK fetch ulang ke
-             Firebase. Data mentah tetap selalu 1-menit di server. -->
+        <!-- Murni tampilan: meratakan data 10-detik yang sudah di-fetch
+             jadi bucket lebih kasar di browser, TIDAK fetch ulang ke
+             Firebase. Data mentah tetap selalu 10 detik di server. -->
         <div class="resolution-toggle">
           <span class="resolution-toggle__label">Tampilkan tiap:</span>
-          <button class="range-btn is-active" data-minutes="1">1 MENIT</button>
-          <button class="range-btn" data-minutes="3">3 MENIT</button>
-          <button class="range-btn" data-minutes="5">5 MENIT</button>
-          <button class="range-btn" data-minutes="10">10 MENIT</button>
+          <button class="range-btn is-active" data-seconds="10">10 DETIK</button>
+          <button class="range-btn" data-seconds="60">1 MENIT</button>
+          <button class="range-btn" data-seconds="180">3 MENIT</button>
+          <button class="range-btn" data-seconds="300">5 MENIT</button>
+          <button class="range-btn" data-seconds="600">10 MENIT</button>
         </div>
 
-        <button id="dlcsv" class="ghost-btn">Unduh CSV (90 hari terakhir)</button>
+        <button id="dlcsv" class="ghost-btn">Unduh CSV (30 hari terakhir)</button>
       </div>
 
       <div class="chart-wrap"><canvas id="trend"></canvas></div>

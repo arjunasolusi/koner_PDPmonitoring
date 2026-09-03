@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install dependencies
         working-directory: functions-cangas-unit2
@@ -27,11 +27,11 @@ jobs:
       - name: Write service account key
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_KONER_DEWPOINT }}' > ${{ github.workspace }}/gcp-key.json
 
-      - name: Deploy (scoped ke 1 fungsi -- TIDAK PERNAH pakai --force)
+      - name: Deploy (scoped ke 2 fungsi -- TIDAK PERNAH pakai --force)
         working-directory: functions-cangas-unit2
         run: |
           npx firebase-tools deploy \
-            --only functions:cangasCleanupOldStreams \
+            --only functions:cangasCleanupOldStreams,functions:cangasSendBiweeklyCsv \
             --project koner-dewpoint \
             --non-interactive
         env:

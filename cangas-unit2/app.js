@@ -14,17 +14,15 @@ const firebaseConfig = {
 const deviceId = "tifico-cangas-unit2";
 const TAGS = ["purity", "pressure", "flow"];
 
-// Firmware V2: /latest tiap 10s, /streams capture tiap 1 menit (path "m1").
-// OFFLINE_AFTER_MS = 3x interval kirim /latest yang baru (10s), BUKAN lagi
-// berbasis interval lama (60s) -- device dianggap offline jauh lebih cepat
-// sekarang (30s vs sebelumnya 3 menit). Ini konsekuensi yang disengaja dari
-// firmware mengirim lebih sering.
-const OFFLINE_AFTER_MS = 3 * 10 * 1000;
+// Firmware V3: /latest tiap 7s, /streams SEKARANG 1 record gabungan
+// (purity+pressure+flow bareng) tiap 10s di path /streams/s10/... --
+// bukan lagi 3 pohon data terpisah seperti V2 (path "m1" per tag).
+const OFFLINE_AFTER_MS = 3 * 7 * 1000; // 3x LATEST_MS firmware (7s) = 21s
 
-// CSV export dibatasi 3 bulan terakhir (bukan seluruh histori) -- data
-// sekarang 1-menit granularity dengan retensi 12 bulan di server, fetch
-// "semua" akan sangat berat. Lihat downloadAllStreamsCSV() di bawah.
-const CSV_LOOKBACK_DAYS = 90;
+// Retensi backend sekarang 30 hari (Cloud Function cangasCleanupOldStreams,
+// lihat functions-cangas/index.js) -- CSV dibatasi sama, download lebih
+// dari itu percuma karena datanya sudah tidak ada lagi di server.
+const CSV_LOOKBACK_DAYS = 30;
 
 const COLORS = {
   purity: "#3FC6E0",   // cyan -- metrik utama
@@ -54,10 +52,7 @@ function setVal(id, val, decimals) {
 // koma; selama digit yang baru ditampilkan itu '9', tambah 1 digit lagi
 // (sampai batas maxDecimals). Ini truncate (potong), BUKAN round --
 // sengaja, supaya tidak pernah kejadian "99.9997" dibulatkan jadi
-// "100.000" gara-gara carry dari toFixed(). Konsekuensinya nilai yang
-// ditampilkan bisa sedikit lebih rendah dari nilai asli (mis. 99.99969
-// tampil "99.9996"), tapi itu jauh lebih jujur daripada kelihatan
-// menyentuh 100% padahal belum.
+// "100.000" gara-gara carry dari toFixed().
 function formatPurity(value, minDecimals = 1, maxDecimals = 6) {
   const n = Number(value);
   if (value == null || !isFinite(n)) return "—";
@@ -108,7 +103,7 @@ async function refreshLatest() {
 }
 
 refreshLatest();
-setInterval(refreshLatest, 15000);
+setInterval(refreshLatest, 5000); // dipercepat dari 15s -- /latest sekarang update tiap 7s
 
 /* ---------------- chart ---------------- */
 const toggleWrap = document.getElementById("seriesToggles");
@@ -154,20 +149,20 @@ const chart = new Chart(ctx, {
         ticks: { autoSkip: true, maxRotation: 0, color: "#7C8894", font: { family: "IBM Plex Mono", size: 10 } },
         grid: { color: "#232B33" }
       },
-      // Purity: fixed range dengan headroom di bawah rentang operasional
-      // normal (97.999-99.999% per dokumen) supaya penurunan/startup dip
-      // tetap kelihatan, bukan cuma nabrak plafon atas. Angka 90/100.5 ini
-      // pilihan default -- sesuaikan kalau ada data lapangan yang lebih baik.
+      // Purity: fixed range 99-100% (keputusan eksplisit -- rentang
+      // operasional yang diharapkan bergerak di 99.99xx). CATATAN: kalau
+      // nilai riil sempat turun di bawah 99% (mis. saat startup), garisnya
+      // akan terpotong di bawah axis, bukan sekadar terlihat flat -- ini
+      // sudah dikonfirmasi & disengaja, bukan default aman dari saya.
       purity: {
-        type: "linear", position: "left", offset: false, min: 90, max: 100.5,
-        ticks: { stepSize: 2, color: COLORS.purity, font: { family: "IBM Plex Mono", size: 10 } },
+        type: "linear", position: "left", offset: false, min: 99, max: 100,
+        ticks: { stepSize: 0.2, color: COLORS.purity, font: { family: "IBM Plex Mono", size: 10 } },
         title: { display: true, text: "Purity (%)", color: "#7C8894", font: { size: 10 } },
         grid: { color: "#232B33" }
       },
       // Pressure & flow: AUTO-SCALE sengaja, bukan fixed. Satuan & scaling
       // (/1000, ikut asumsi dari purity) belum divalidasi dengan data
-      // riil -- lihat CanGas_Unit2_Summary.md §4 & §6. Pasang fixed range
-      // sekarang cuma akan menebak batas yang belum tentu benar.
+      // riil -- lihat CanGas_Unit2_Summary.md §4 & §6.
       pressure: {
         type: "linear", position: "right", offset: false,
         ticks: { color: COLORS.pressure, font: { family: "IBM Plex Mono", size: 10 } },
@@ -197,12 +192,12 @@ function pad(n) { return String(n).padStart(2, "0"); }
 
 let currentRangeHours = 24;
 
-// Cache data mentah (1-menit) hasil fetch terakhir -- dipakai ulang saat
-// user ganti resolusi tampilan (3/5/10 menit), TIDAK fetch ulang ke
-// Firebase. Resolusi cuma soal AGREGASI DI BROWSER, bukan sumber data
-// yang beda -- firmware selalu kirim 1-menit, dashboard yang meratakan.
+// Cache data mentah (10 detik) hasil fetch terakhir -- dipakai ulang saat
+// user ganti resolusi tampilan, TIDAK fetch ulang ke Firebase. Resolusi
+// cuma soal AGREGASI DI BROWSER (rata-rata per bucket), sumber datanya
+// tetap selalu 10 detik dari server.
 let rawSeriesCache = Object.fromEntries(TAGS.map(t => [t, []]));
-let currentResolutionMinutes = 1;
+let currentResolutionSeconds = 10;
 
 async function loadRange(hours) {
   currentRangeHours = hours;
@@ -216,31 +211,32 @@ async function loadRange(hours) {
   const days = daysBetween(new Date(start), new Date(end));
   const series = Object.fromEntries(TAGS.map(t => [t, []]));
 
-  for (const tag of TAGS) {
-    for (const [Y, M, D] of days) {
-      const p = `/${deviceId}/streams/${tag}/m1/${Y}/${M}/${D}`;
-      const daySnap = await get(ref(db, p));
-      if (!daySnap.exists()) continue;
-      for (const rec of Object.values(daySnap.val())) {
-        const tsMs = toMs(rec.ts);
-        const val = Number(rec.val ?? rec[tag]);
-        if (isFinite(tsMs) && isFinite(val) && tsMs >= start && tsMs <= end) {
-          series[tag].push({ x: tsMs, y: val });
-        }
+  // Skema konsolidasi: 1 fetch per HARI (bukan per hari x per tag seperti
+  // V2/V3-lama) -- tiap record sudah berisi ketiga nilai sekaligus.
+  for (const [Y, M, D] of days) {
+    const p = `/${deviceId}/streams/s10/${Y}/${M}/${D}`;
+    const daySnap = await get(ref(db, p));
+    if (!daySnap.exists()) continue;
+    for (const rec of Object.values(daySnap.val())) {
+      const tsMs = toMs(rec.ts);
+      if (!isFinite(tsMs) || tsMs < start || tsMs > end) continue;
+      for (const tag of TAGS) {
+        const val = Number(rec[tag]);
+        if (isFinite(val)) series[tag].push({ x: tsMs, y: val });
       }
     }
-    series[tag].sort((a, b) => a.x - b.x);
   }
+  TAGS.forEach(t => series[t].sort((a, b) => a.x - b.x));
 
   rawSeriesCache = series;
-  applyResolution(); // render dengan resolusi yang sedang dipilih
+  applyResolution();
 }
 
-// Ratakan titik 1-menit jadi bucket N-menit (rata-rata per bucket).
-// resolutionMinutes=1 berarti tampil apa adanya, tanpa agregasi.
-function aggregateSeries(points, resolutionMinutes) {
-  if (resolutionMinutes <= 1 || points.length === 0) return points;
-  const bucketMs = resolutionMinutes * 60 * 1000;
+// Ratakan titik 10-detik jadi bucket N-detik (rata-rata per bucket).
+// resolutionSeconds<=10 berarti tampil apa adanya, tanpa agregasi.
+function aggregateSeries(points, resolutionSeconds) {
+  if (resolutionSeconds <= 10 || points.length === 0) return points;
+  const bucketMs = resolutionSeconds * 1000;
   const buckets = new Map();
   for (const p of points) {
     const bucketX = Math.floor(p.x / bucketMs) * bucketMs;
@@ -256,7 +252,7 @@ function aggregateSeries(points, resolutionMinutes) {
 
 function applyResolution() {
   chart.data.datasets.forEach(ds => {
-    ds.data = aggregateSeries(rawSeriesCache[ds.label] || [], currentResolutionMinutes);
+    ds.data = aggregateSeries(rawSeriesCache[ds.label] || [], currentResolutionSeconds);
   });
   chart.update();
 }
@@ -281,13 +277,14 @@ document.querySelectorAll(".range-toggle .range-btn").forEach(btn => {
   });
 });
 
-// Toggle resolusi tampilan (1/3/5/10 MENIT) -- ini MURNI tampilan, cuma
-// meratakan data yang sudah ada di rawSeriesCache, tidak fetch ulang.
+// Toggle resolusi tampilan (10 DETIK / 1 / 3 / 5 / 10 MENIT) -- MURNI
+// tampilan, cuma meratakan data yang sudah ada di rawSeriesCache, tidak
+// fetch ulang. data-seconds di HTML: 10, 60, 180, 300, 600.
 document.querySelectorAll(".resolution-toggle .range-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".resolution-toggle .range-btn").forEach(b => b.classList.remove("is-active"));
     btn.classList.add("is-active");
-    currentResolutionMinutes = Number(btn.dataset.minutes);
+    currentResolutionSeconds = Number(btn.dataset.seconds);
     applyResolution();
   });
 });
@@ -301,7 +298,7 @@ document.querySelectorAll(".series-toggle").forEach(cb => {
   });
 });
 
-/* ---------------- CSV export (dibatasi 3 bulan terakhir) ---------------- */
+/* ---------------- CSV export (dibatasi 30 hari terakhir) ---------------- */
 document.getElementById("dlcsv").onclick = downloadAllStreamsCSV;
 
 async function downloadAllStreamsCSV() {
@@ -309,32 +306,32 @@ async function downloadAllStreamsCSV() {
   const start = new Date(end.getTime() - CSV_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
   const days = daysBetween(start, end);
 
-  const rowsByTs = Object.create(null);
+  const rows = [];
 
-  for (const tag of TAGS) {
-    for (const [Y, M, D] of days) {
-      const p = `/${deviceId}/streams/${tag}/m1/${Y}/${M}/${D}`;
-      const daySnap = await get(ref(db, p));
-      if (!daySnap.exists()) continue;
-      for (const rec of Object.values(daySnap.val())) {
-        const ts = toMs(rec.ts);
-        const val = Number(rec.val ?? rec[tag]);
-        if (!Number.isFinite(ts) || !Number.isFinite(val)) continue;
-        if (!rowsByTs[ts]) rowsByTs[ts] = { ts_ms: ts };
-        rowsByTs[ts][tag] = val;
-      }
+  for (const [Y, M, D] of days) {
+    const p = `/${deviceId}/streams/s10/${Y}/${M}/${D}`;
+    const daySnap = await get(ref(db, p));
+    if (!daySnap.exists()) continue;
+    for (const rec of Object.values(daySnap.val())) {
+      const ts = toMs(rec.ts);
+      if (!Number.isFinite(ts)) continue;
+      rows.push({
+        ts,
+        purity: rec.purity,
+        pressure: rec.pressure,
+        flow: rec.flow
+      });
     }
   }
 
-  const timestamps = Object.keys(rowsByTs).map(Number).sort((a, b) => a - b);
-  if (timestamps.length === 0) { alert(`Tidak ada data streams dalam ${CSV_LOOKBACK_DAYS} hari terakhir untuk diekspor.`); return; }
+  if (rows.length === 0) { alert(`Tidak ada data streams dalam ${CSV_LOOKBACK_DAYS} hari terakhir untuk diekspor.`); return; }
+  rows.sort((a, b) => a.ts - b.ts);
 
   const headers = ["ts_iso", "ts_ms", ...TAGS];
   const lines = [headers.join(",")];
-  for (const ts of timestamps) {
-    const row = rowsByTs[ts];
-    const iso = new Date(ts).toISOString();
-    lines.push([iso, ts, ...TAGS.map(t => fmt(row[t]))].join(","));
+  for (const row of rows) {
+    const iso = new Date(row.ts).toISOString();
+    lines.push([iso, row.ts, ...TAGS.map(t => fmt(row[t]))].join(","));
   }
 
   const csv = lines.join("\n");
