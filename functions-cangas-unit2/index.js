@@ -1,6 +1,22 @@
 /**
- * functions-cangas-unit2/index.js
+ * index_functions_cangas_unit2_V3-skip-email-if-no-data.js
  * ------------------------------------------------------------------
+ * VERSI: V3
+ *
+ * Riwayat versi (ringkas):
+ *   V1 -- cangasCleanupOldStreams saja, skema per-tag (m1/m5), retensi
+ *         6 bulan -> 1 tahun (beberapa kali revisi angka)
+ *   V2 -- Rombak total: skema konsolidasi 1 record/capture (path
+ *         streams/s10/...), tambah cangasSendBiweeklyCsv (email CSV
+ *         14 harian), retensi disederhanakan jadi 30 hari
+ *   V3 -- Jadwal email digeser 04:00 -> 08:00 WIB. Tambah pengecekan
+ *         rowCount: kalau tidak ada data sama sekali di periode 14 hari
+ *         (device kemungkinan mati/tidak dipakai), SKIP kirim email dan
+ *         JANGAN update lastCsvEmailTs -- supaya begitu device aktif
+ *         lagi kapan pun, pengecekan berikutnya langsung kirim tanpa
+ *         nunggu 14 hari baru dari titik itu. Trigger sekarang gabungan
+ *         DUA syarat: (interval waktu terpenuhi) DAN (ada data).
+ *
  * 2 fungsi untuk device tifico-cangas-unit2:
  *
  *   1. cangasCleanupOldStreams  -- hapus otomatis data /streams yang
@@ -178,6 +194,15 @@ exports.cangasSendBiweeklyCsv = onSchedule(
     }
 
     const { csv, rowCount, start, end } = await buildCsv(db, CSV_PERIOD_DAYS);
+
+    // Kalau device mati/tidak ada data sama sekali di periode ini, JANGAN
+    // kirim email kosong -- dan JANGAN update lastCsvEmailTs, supaya begitu
+    // device hidup lagi (kapan pun), pengecekan berikutnya langsung kirim
+    // tanpa perlu nunggu 14 hari baru lagi dari titik itu.
+    if (rowCount === 0) {
+      logger.info("cangasSendBiweeklyCsv: tidak ada data di periode ini (device kemungkinan offline). Skip kirim, lastCsvEmailTs TIDAK diupdate.");
+      return;
+    }
 
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
